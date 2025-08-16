@@ -1,0 +1,12 @@
+# RustRover
+.idea/
+
+# My personal notes and tasks outside the project
+/work.txt
+
+# MAC
+.DS_Store
+
+# RUST
+**/target/**
+Cargo.lock

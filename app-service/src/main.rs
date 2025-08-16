@@ -1,5 +1,4 @@
 use std::env;
-
 use askama::Template;
 use axum::{
     http::StatusCode,
@@ -11,6 +10,10 @@ use axum_extra::extract::CookieJar;
 use serde::Serialize;
 use tower_http::services::ServeDir;
 
+/// Must match with the port number used in docker-compose.yml for the app-service. Switched from 3000 -> 8001 due to local conflict
+const AUTH_SERVICE_PORT: u16 = 8001u16;
+const APP_SERVICE_PORT: u16 = 8000u16;
+
 #[tokio::main]
 async fn main() {
     let app = Router::new()
@@ -18,7 +21,7 @@ async fn main() {
         .route("/", get(root))
         .route("/protected", get(protected));
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", APP_SERVICE_PORT)).await.unwrap();
 
     println!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
@@ -36,8 +39,8 @@ async fn root() -> impl IntoResponse {
     if address.is_empty() {
         address = "localhost".to_owned();
     }
-    let login_link = format!("http://{}:3000", address);
-    let logout_link = format!("http://{}:3000/logout", address);
+    let login_link = format!("http://{}:{}", address, AUTH_SERVICE_PORT);
+    let logout_link = format!("http://{}:{}/logout", address, AUTH_SERVICE_PORT);
 
     let template = IndexTemplate {
         login_link,
@@ -61,7 +64,7 @@ async fn protected(jar: CookieJar) -> impl IntoResponse {
     });
 
     let auth_hostname = env::var("AUTH_SERVICE_HOST_NAME").unwrap_or("0.0.0.0".to_owned());
-    let url = format!("http://{}:3000/verify-token", auth_hostname);
+    let url = format!("http://{}:{}/verify-token", auth_hostname, AUTH_SERVICE_PORT);
 
     let response = match api_client.post(&url).json(&verify_token_body).send().await {
         Ok(response) => response,
