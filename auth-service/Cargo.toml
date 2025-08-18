@@ -13,6 +13,8 @@ tower-http = { version = "0.6", features = ["fs"] }
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 derivative = "2"
+validator = { version = "0", features = ["derive"] }
+uuid = { version = "1", features = ["v7"]}
 
 [dev-dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["json"] }

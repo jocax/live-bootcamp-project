@@ -2,10 +2,19 @@ use auth_service::model::{
     LoginRequest, LogoutRequest, SignUpRequest, Verify2FARequest, VerifyTokenRequest,
 };
 use auth_service::Application;
+use axum::Error;
+use uuid::Uuid;
 
 pub struct TestApp {
     pub address: String,
     pub http_client: reqwest::Client,
+}
+
+impl TestApp {
+    pub(crate) async fn get_random_email() -> String {
+        //we use v7 due to the time support and natural order for database indexing
+        format!("{}@example.com", Uuid::now_v7())
+    }
 }
 
 impl TestApp {
@@ -48,6 +57,18 @@ impl TestApp {
             .await
             .expect("Failed to execute signup request.")
     }
+    pub async fn post_signup_body<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        self.http_client
+            .post(&format!("{}/api/signup", &self.address))
+            .json(body)
+            .send()
+            .await
+            .expect("Failed to execute signup request.")
+    }
+
 
     pub async fn post_login(&self, login_request: &LoginRequest) -> reqwest::Response {
         println!("POST {}/api/login", &self.address);
@@ -91,4 +112,10 @@ impl TestApp {
             .await
             .expect("Failed to execute verify-token request.")
     }
+
+}
+
+pub fn get_random_email() -> String {
+    //we use v7 due to the time support and natural order for database indexing
+    format!("{}@example.com", Uuid::now_v7())
 }

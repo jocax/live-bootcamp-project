@@ -2,18 +2,23 @@ use axum::Json;
 use axum::response::{IntoResponse, Response};
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
+use validator::Validate;
+
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug)]
 pub struct ErrorResponse {
     pub message: String,
 }
-#[derive(Serialize, Deserialize, Derivative)]
+#[derive(Serialize, Deserialize, Derivative, Validate)]
 #[derivative(Debug)]
 pub struct SignUpRequest {
+    #[validate(email(message = "Valid email required"))]
     email: String,
     #[derivative(Debug = "ignore")]
+    #[validate(length(min = 8, max = 32, message = "Password must be 8-32 characters"))]
     password: String,
-    requires2fa: bool,
+    #[serde(rename = "requires2FA")]
+    requires_2fa: bool,
 }
 impl SignUpRequest {
 
@@ -21,7 +26,7 @@ impl SignUpRequest {
         Self {
             email,
             password,
-            requires2fa,
+            requires_2fa: requires2fa,
         }
     }
     pub fn get_email(&self) -> String {
@@ -31,7 +36,7 @@ impl SignUpRequest {
         String::from("*****")
     }
     pub fn get_requires2fa(&self) -> bool {
-        self.requires2fa
+        self.requires_2fa
     }
 }
 

@@ -1,16 +1,21 @@
-use crate::model::{
-    LoginResponse, LogoutResponse, SignUpResponse, Verify2FAResponse, VerifyTokenResponse,
-};
+use crate::model::{ErrorResponse, LogoutResponse, SignUpRequest, SignUpResponse, Verify2FAResponse, VerifyTokenResponse};
 use axum::http::header::SET_COOKIE;
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Response};
 use axum::Json;
+use serde_json::json;
+use validator::Validate;
 
-pub async fn hello_handler() -> Html<&'static str> {
-    Html("<h1>Welcome to Sprint 1</h1>")
-}
+pub async fn signup_handler(Json(request): Json<SignUpRequest>) -> impl IntoResponse {
 
-pub async fn signup_handler() -> impl IntoResponse {
+    // Validate the request
+    if let Err(errors) = request.validate() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {message: format!("Validation error: {:?}", errors)}),
+        ).into_response();
+    }
+
     Response::builder()
         .status(StatusCode::CREATED)
         .header("content-type", "application/json")
