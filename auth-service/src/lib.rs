@@ -1,15 +1,18 @@
+extern crate core;
+
 mod routes;
+pub mod model;
 
 use std::error::Error;
 use axum::Router;
-use axum::routing::get;
+use axum::routing::post;
 use axum::serve::Serve;
 use tower_http::services::ServeDir;
-use crate::routes::hello_handler;
+use crate::routes::{login_handler, logout_handler, signup_handler, verify_2fa_handler, verify_token_handler};
 
 // This struct encapsulates our application-related logic.
 pub struct Application {
-    server: Serve<Router, Router>,
+    server: Serve<tokio::net::TcpListener, Router, Router>,
     // address is exposed as a public field
     // so we have access to it in tests.
     pub address: String,
@@ -22,8 +25,14 @@ impl Application {
         // Also, remove the `hello` route.
         // We don't need it at this point!
         let router  = Router::new()
-            .nest_service("/", ServeDir::new("assets"));
-            //.route("/hello", get(hello_handler));
+            .fallback_service(ServeDir::new("assets"))
+            .route("/signup", post(signup_handler))
+            .route("/login", post(login_handler))
+            .route("/logout", post(logout_handler))
+            .route("/verify-2fa", post(verify_2fa_handler))
+            .route("/verify-token", post(verify_token_handler))
+            ;
+
 
         let listener = tokio::net::TcpListener::bind(address).await?;
         let listener_address = listener.local_addr()?.to_string();
