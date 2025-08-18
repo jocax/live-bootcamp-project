@@ -6,7 +6,7 @@ info:
   version: 1.0.0
 
 servers:
-  - url: 'http://example.com/api'
+  - url: 'http://localhost:8001/api'
     description: Main server
 
 paths:
@@ -81,7 +81,7 @@ paths:
                 properties:
                   error:
                     type: string
-          
+
   /login:
     post:
       summary: Authenticate user and return JWT

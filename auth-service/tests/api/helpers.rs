@@ -40,9 +40,9 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
     pub async fn post_signup(&self, signup: &SignUpRequest) -> reqwest::Response {
-        println!("POST {}/signup", &self.address);
+        println!("POST {}/api/signup", &self.address);
         self.http_client
-            .post(&format!("{}/signup", &self.address))
+            .post(&format!("{}/api/signup", &self.address))
             .json(&signup)
             .send()
             .await
@@ -50,9 +50,9 @@ impl TestApp {
     }
 
     pub async fn post_login(&self, login_request: &LoginRequest) -> reqwest::Response {
-        println!("POST {}/login", &self.address);
+        println!("POST {}/api/login", &self.address);
         self.http_client
-            .post(&format!("{}/login", &self.address))
+            .post(&format!("{}/api/login", &self.address))
             .json(&login_request)
             .send()
             .await
@@ -60,9 +60,9 @@ impl TestApp {
     }
 
     pub async fn post_logout(&self, logout_request: &LogoutRequest) -> reqwest::Response {
-        println!("POST {}/logout", &self.address);
+        println!("POST {}/api/logout", &self.address);
         self.http_client
-            .post(&format!("{}/logout", &self.address))
+            .post(&format!("{}/api/logout", &self.address))
             .json(&logout_request)
             .send()
             .await
@@ -70,9 +70,9 @@ impl TestApp {
     }
 
     pub async fn post_verify2fa(&self, verify_2fa_request: &Verify2FARequest) -> reqwest::Response {
-        println!("POST {}/verify-2fa", &self.address);
+        println!("POST {}/api/verify-2fa", &self.address);
         self.http_client
-            .post(&format!("{}/verify-2fa", &self.address))
+            .post(&format!("{}/api/verify-2fa", &self.address))
             .json(&verify_2fa_request)
             .send()
             .await
@@ -83,9 +83,9 @@ impl TestApp {
         &self,
         verify_token_request: &VerifyTokenRequest,
     ) -> reqwest::Response {
-        println!("POST {}/verify-token", &self.address);
+        println!("POST {}/api/verify-token", &self.address);
         self.http_client
-            .post(&format!("{}/verify-token", &self.address))
+            .post(&format!("{}/api/verify-token", &self.address))
             .json(&verify_token_request.get_token())
             .send()
             .await

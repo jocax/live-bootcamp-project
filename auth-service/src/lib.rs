@@ -26,11 +26,11 @@ impl Application {
         // We don't need it at this point!
         let router  = Router::new()
             .fallback_service(ServeDir::new("assets"))
-            .route("/signup", post(signup_handler))
-            .route("/login", post(login_handler))
-            .route("/logout", post(logout_handler))
-            .route("/verify-2fa", post(verify_2fa_handler))
-            .route("/verify-token", post(verify_token_handler))
+            .route("/api/signup", post(signup_handler))
+            .route("/api/login", post(login_handler))
+            .route("/api/logout", post(logout_handler))
+            .route("/api/verify-2fa", post(verify_2fa_handler))
+            .route("/api/verify-token", post(verify_token_handler))
             ;
 
 
