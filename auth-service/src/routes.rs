@@ -1,9 +1,8 @@
 use crate::model::{ErrorResponse, LogoutResponse, SignUpRequest, SignUpResponse, Verify2FAResponse, VerifyTokenResponse};
 use axum::http::header::SET_COOKIE;
 use axum::http::StatusCode;
-use axum::response::{Html, IntoResponse, Response};
+use axum::response::{ IntoResponse, Response};
 use axum::Json;
-use serde_json::json;
 use validator::Validate;
 
 pub async fn signup_handler(Json(request): Json<SignUpRequest>) -> impl IntoResponse {

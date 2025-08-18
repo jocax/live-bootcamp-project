@@ -1,5 +1,3 @@
-use axum::Json;
-use axum::response::{IntoResponse, Response};
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
@@ -17,7 +15,8 @@ pub struct SignUpRequest {
     #[derivative(Debug = "ignore")]
     #[validate(length(min = 8, max = 32, message = "Password must be 8-32 characters"))]
     password: String,
-    #[serde(rename = "requires2FA")]
+    // #[serde(rename = "requires2FA", alias = "requires_2fa")]
+    #[serde(rename(serialize = "requires2FA", deserialize = "requires_2fa"))]
     requires_2fa: bool,
 }
 impl SignUpRequest {
@@ -145,10 +144,10 @@ mod tests {
 
         //with password
         let serialized = serde_json::to_string(&request).unwrap();
-        assert_eq!(serialized, "{\"email\":\"my@email.de\",\"password\":\"myPassword\",\"requires2fa\":false}");
+        assert_eq!(serialized, "{\"email\":\"my@email.de\",\"password\":\"myPassword\",\"requires2FA\":false}");
 
         //no password
         let request_debugged = format!("{:?}", request);
-        assert_eq!(request_debugged, "SignUpRequest { email: \"my@email.de\", requires2fa: false }");
+        assert_eq!(request_debugged, "SignUpRequest { email: \"my@email.de\", requires_2fa: false }");
     }
 }

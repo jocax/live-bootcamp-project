@@ -2,7 +2,6 @@ use auth_service::model::{
     LoginRequest, LogoutRequest, SignUpRequest, Verify2FARequest, VerifyTokenRequest,
 };
 use auth_service::Application;
-use axum::Error;
 use uuid::Uuid;
 
 pub struct TestApp {
@@ -113,9 +112,4 @@ impl TestApp {
             .expect("Failed to execute verify-token request.")
     }
 
-}
-
-pub fn get_random_email() -> String {
-    //we use v7 due to the time support and natural order for database indexing
-    format!("{}@example.com", Uuid::now_v7())
 }
