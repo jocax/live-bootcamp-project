@@ -12,7 +12,7 @@
 Cargo.lock
 
 # Qipio Deployment
-.do-deployment/environments/secrets.env
+.do-deployment/
 .do-deployment/state/
 .droplet-*.json
 *.log
