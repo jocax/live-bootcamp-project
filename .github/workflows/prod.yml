@@ -53,6 +53,11 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
+    - name: Create .env file
+      run: |
+        echo "# Environment variables for live-bootcamp-project" > .env
+        echo "AUTH_SERVICE_IP=${{ vars.DROPLET_IP }}" >> .env
+
     - name: Build and push Docker images
       uses: docker/bake-action@v2.3.0
       with:
