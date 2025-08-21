@@ -17,6 +17,7 @@ pub struct Application {
     address: SocketAddr,
     router: Router,
     tls_enabled: bool,
+    listener: Option<tokio::net::TcpListener>,
 }
 
 impl Application {
@@ -26,12 +27,27 @@ impl Application {
         let router = create_router();
         let addr: SocketAddr = address.parse()?;
         let tls_enabled = get_tls_config();
+        
+        // For tests and HTTP mode, pre-bind the listener to get the actual address
+        let (actual_addr, listener) = if addr.port() == 0 || !tls_enabled {
+            let listener = tokio::net::TcpListener::bind(addr).await?;
+            let bound_addr = listener.local_addr()?;
+            (bound_addr, Some(listener))
+        } else {
+            (addr, None)
+        };
 
         Ok(Application {
-            address: addr,
+            address: actual_addr,
             router,
             tls_enabled,
+            listener,
         })
+    }
+    
+    // Getter method for tests to access the bound address
+    pub fn address(&self) -> SocketAddr {
+        self.address
     }
     
     pub async fn run(self) -> Result<(), Box<dyn Error>> {
@@ -61,7 +77,10 @@ impl Application {
     }
     
     async fn start_http_server(self) -> Result<(), Box<dyn Error>> {
-        let listener = tokio::net::TcpListener::bind(self.address).await?;
+        let listener = match self.listener {
+            Some(listener) => listener,
+            None => tokio::net::TcpListener::bind(self.address).await?,
+        };
         println!("listening on {}", listener.local_addr()?);
         axum::serve(listener, self.router).await.map_err(|e| e.into())
     }

@@ -18,17 +18,25 @@ impl TestApp {
 
 impl TestApp {
     pub async fn new() -> Self {
+        // Ensure TLS is disabled for tests
+        std::env::set_var("TLS_ENABLED", "false");
+        
         let app = Application::build("127.0.0.1:0")
             .await
             .expect("Failed to build app");
 
-        let address = format!("http://{}", app.address.clone());
+        let address = format!("http://{}", app.address());
         println!("Running on {:?}", address);
 
         // Run the auth service in a separate async task
         // to avoid blocking the main test thread.
         #[allow(clippy::let_underscore_future)]
-        let _ = tokio::spawn(app.run());
+        let _ = tokio::spawn(async move {
+            app.run().await.expect("Failed to run app");
+        });
+
+        // Give the server a moment to start
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
         let http_client = reqwest::Client::new();
 
