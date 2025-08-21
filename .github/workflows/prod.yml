@@ -80,7 +80,7 @@ jobs:
         key: ${{ secrets.QIPIO_DEPLOY_KEY }}
         script: |
           # Navigate to application directory
-          cd /home/deploy
+          cd /home/deploy/live-bootcamp
           
           # Stop current services
           docker compose down

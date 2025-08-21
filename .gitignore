@@ -17,3 +17,10 @@ qipio.yml
 # Logs
 *.log
 
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+*.env
+**/.env
