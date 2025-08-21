@@ -1,0 +1,114 @@
+#!/bin/zsh
+# qipio - Digital Ocean Deployment Toolkit
+# Author: Jocax
+# Purpose: Reusable deployment tool for any DO project
+
+# Directory structure:
+# qipio/
+# ├── qipio                   # Main CLI tool
+# ├── commands/               # Command modules
+# ├── lib/                    # Shared libraries
+# ├── templates/              # Project templates
+# ├── config/                 # Global configurations
+# └── README.md              # Documentation
+
+# === Main CLI Tool: qipio ===
+
+#!/bin/zsh
+# qipio - Main CLI interface
+set -euo pipefail
+
+QIPIO_VERSION="1.0.0"
+QIPIO_ROOT="${0:A:h}"
+
+# Source core libraries
+source "${QIPIO_ROOT}/lib/colors.sh"
+source "${QIPIO_ROOT}/lib/config.sh"
+source "${QIPIO_ROOT}/lib/utils.sh"
+
+# Main command dispatcher
+main() {
+    case "${1:-help}" in
+        init)
+            shift
+            "${QIPIO_ROOT}/commands/init.sh" "$@"
+            ;;
+        setup-ssh)
+            shift
+            "${QIPIO_ROOT}/commands/setup-ssh.sh" "$@"
+            ;;
+        ssh)
+            shift
+            "${QIPIO_ROOT}/commands/ssh.sh" "$@"
+            ;;
+        create)
+            shift
+            "${QIPIO_ROOT}/commands/create.sh" "$@"
+            ;;
+        deploy)
+            shift
+            "${QIPIO_ROOT}/commands/deploy.sh" "$@"
+            ;;
+        vpc)
+            shift
+            "${QIPIO_ROOT}/commands/vpc.sh" "$@"
+            ;;
+        status)
+            shift
+            "${QIPIO_ROOT}/commands/status.sh" "$@"
+            ;;
+        destroy)
+            shift
+            "${QIPIO_ROOT}/commands/destroy.sh" "$@"
+            ;;
+        version)
+            echo "Qipio v${QIPIO_VERSION}"
+            ;;
+        help|*)
+            show_help
+            ;;
+    esac
+}
+
+show_help() {
+    print_header "🌊 Qipio - Digital Ocean Deployment Toolkit v${QIPIO_VERSION}"
+
+    cat <<EOF
+Usage: qipio <command> [options]
+
+Setup Commands (Execute Once/Rarely):
+  init              Initialize a new project with qipio.yml template
+  setup-ssh         Setup SSH keys for Digital Ocean (outputs ID for qipio.yml)
+  vpc               Manage VPC networks (outputs UUID for qipio.yml)
+
+Operational Commands (Frequent Use):
+  create            Create infrastructure from qipio.yml config (pure doctl)
+  destroy           Destroy infrastructure from qipio.yml config
+  status            Show infrastructure status from qipio.yml config
+  deploy            Deploy containers to created infrastructure
+
+Utility Commands:
+  ssh               Connect to droplets via SSH
+  version           Show toolkit version
+  help              Show this help message
+
+Examples:
+  # Setup workflow (execute once)
+  qipio setup-ssh                       # Get SSH key ID for qipio.yml
+  qipio vpc create my-app-vpc nyc1       # Get VPC UUID for qipio.yml
+  qipio init my-rust-app                 # Initialize project with qipio.yml
+
+  # Operational workflow (frequent use)
+  qipio create development               # Create infrastructure
+  qipio create production --dry-run      # Preview doctl commands
+  qipio status development               # Check infrastructure status  
+  qipio deploy production                # Deploy application
+  qipio destroy development              # Clean up resources
+
+For detailed help on any command:
+  qipio <command> --help
+EOF
+}
+
+# Execute main function
+main "$@"

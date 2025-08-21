@@ -2,18 +2,18 @@
 # This configuration generates native doctl commands for infrastructure creation
 
 project:
-  name: live-bootcamp-project
-  description: "live-bootcamp-project application with pure doctl infrastructure"
+  name: live-bootcamp
+  description: "live-bootcamp application with pure doctl infrastructure"
 
 infrastructure:
   development:
     # DigitalOcean project assignment
-    project_id: "44fbdcdc-7905-445a-83c8-889ee53a6286"
+    project_id: "eeb1cdd1-655c-415d-b387-9d8a7828db8f"
     # VPC for network isolation
-    vpc_uuid: "55bdb92d-dd4a-4da7-a142-b1becebe33c0"
+    vpc_uuid: "5fe9d0c0-edb8-4b6f-b095-65875183b9d7"
     # Firewall configuration (created first for tag-based assignment)
     firewall:
-      name: live-bootcamp-project-dev-fw
+      name: live-bootcamp-dev-fw
       droplet_tags: ["web-app", "development"]
       inbound_rules:
         # SSH access (IMPORTANT: Change to your IP for security!)
@@ -23,7 +23,7 @@ infrastructure:
 
         # Rust services access (app-service and auth-service)
         - protocol: tcp
-          ports: "8000,8001"
+          ports: "8000,8001" 
           sources: ["0.0.0.0/0"]  # Public access for demo
 
         # Health check endpoint
@@ -44,7 +44,7 @@ infrastructure:
 
     # Droplet configuration
     droplet:
-      name: live-bootcamp-project-dev
+      name: live-bootcamp-dev
       size: s-1vcpu-1gb
       region: nyc1
       image: ubuntu-24-04-x64
@@ -53,7 +53,12 @@ infrastructure:
       backups: false
       monitoring: true
       ipv6: false
-      user_data: |
+    
+    # Files to deploy to the server
+    deployment_files:
+      ".env": ".env"  # Copy environment variables
+      
+    user_data: |
         #cloud-config
         package_update: true
         packages:
@@ -96,7 +101,7 @@ infrastructure:
     vpc_uuid: "25acfbe9-7876-4f99-ac97-6be1bb89245c"
     # Production firewall (more restrictive)
     firewall:
-      name: live-bootcamp-project-prod-fw
+      name: live-bootcamp-prod-fw
       droplet_tags: ["web-app", "production"]
       inbound_rules:
         # SSH access (open for example)
@@ -111,7 +116,7 @@ infrastructure:
 
         # Application port
         - protocol: tcp
-          ports: "3000"
+          ports: "8000,8001"
           sources: ["0.0.0.0/0"]
 
       outbound_rules:
@@ -126,7 +131,7 @@ infrastructure:
 
     # Production droplet (larger, more secure)
     droplet:
-      name: live-bootcamp-project-prod
+      name: live-bootcamp-prod
       size: s-1vcpu-2gb
       region: nyc1
       image: ubuntu-24-04-x64
@@ -172,7 +177,7 @@ infrastructure:
     vpc_uuid: "ce4bc299-155b-454a-b469-41e790de766f"
     # Staging firewall (between dev and prod security)
     firewall:
-      name: live-bootcamp-project-staging-fw
+      name: live-bootcamp-staging-fw
       droplet_tags: ["web-app", "staging"]
       inbound_rules:
         # SSH access (allow from anywhere for example)
@@ -180,9 +185,9 @@ infrastructure:
           ports: "22"
           sources: ["0.0.0.0/0"]  # Open SSH for example
 
-        # Web application access
+        # Rust services access (app-service and auth-service)
         - protocol: tcp
-          ports: "3000"
+          ports: "8000,8001"
           sources: ["0.0.0.0/0"]  # Public access
 
         # Health check endpoint
@@ -203,7 +208,7 @@ infrastructure:
 
     # Staging droplet (medium size for testing)
     droplet:
-      name: live-bootcamp-project-staging
+      name: live-bootcamp-staging
       size: s-1vcpu-1gb
       region: nyc1
       image: ubuntu-24-04-x64
@@ -231,16 +236,15 @@ infrastructure:
           - systemctl enable docker
           - usermod -aG docker $USER
 
-# Qipio is a private toolkit around command line tool "doctl" for DO:
 # This configuration generates commands like:
 #
 # For development:
-# doctl compute firewall create --name "live-bootcamp-project-dev-fw" \
+# doctl compute firewall create --name "live-bootcamp-dev-fw" \
 #   --inbound-rules "protocol:tcp,ports:22,source_addresses:0.0.0.0/0 protocol:tcp,ports:3000,source_addresses:0.0.0.0/0" \
 #   --outbound-rules "protocol:tcp,ports:all,destination_addresses:0.0.0.0/0" \
 #   --tag-names "web-app,development"
 #
-# doctl compute droplet create "live-bootcamp-project-dev" \
+# doctl compute droplet create "live-bootcamp-dev" \
 #   --size s-1vcpu-1gb \
 #   --region nyc1 \
 #   --image ubuntu-24-04-x64 \
