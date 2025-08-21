@@ -72,25 +72,24 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup SSH for Qipio
-      uses: webfactory/ssh-agent@v0.8.0
+    - name: Deploy Application
+      uses: appleboy/ssh-action@v0.1.7
       with:
-        ssh-private-key: ${{ secrets.QIPIO_DEPLOY_KEY }}
-
-    - name: Install Qipio
-      run: |
-        git clone git@github.com:jocax/qipio.git /tmp/qipio
-        chmod +x /tmp/qipio/qipio
-        echo "/tmp/qipio" >> $GITHUB_PATH
-
-    - name: Setup DO CLI
-      uses: digitalocean/action-doctl@v2
-      with:
-        token: ${{ secrets.DO_API_TOKEN }}
-
-    - name: Deploy to Production
-      env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      run: |
-        qipio deploy production
+        host: ${{ vars.DROPLET_IP }}
+        username: deploy
+        key: ${{ secrets.QIPIO_DEPLOY_KEY }}
+        script: |
+          # Navigate to application directory
+          cd /opt/live-bootcamp-project
+          
+          # Stop current services
+          docker compose down
+          
+          # Pull latest images
+          docker compose pull
+          
+          # Start services with latest images
+          docker compose up -d
+          
+          # Clean up unused images and containers
+          docker system prune -f
