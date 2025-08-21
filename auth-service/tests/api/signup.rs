@@ -56,7 +56,7 @@ async fn should_return_422_if_malformed_input_entity() {
         let response = app.post_signup(&test_case).await;
         assert_eq!(
             response.status().as_u16(),
-            400, //BAD REQUEST FOR INVALID FORMAT --> generates a 400
+            422,
             "Failed for input: {:?}",
             test_case
         );
