@@ -1,0 +1,249 @@
+# Qipio Pure doctl Configuration Example
+# This configuration generates native doctl commands for infrastructure creation
+
+project:
+  name: live-bootcamp-project
+  description: "live-bootcamp-project application with pure doctl infrastructure"
+
+infrastructure:
+  development:
+    # DigitalOcean project assignment
+    project_id: "44fbdcdc-7905-445a-83c8-889ee53a6286"
+    # VPC for network isolation
+    vpc_uuid: "55bdb92d-dd4a-4da7-a142-b1becebe33c0"
+    # Firewall configuration (created first for tag-based assignment)
+    firewall:
+      name: live-bootcamp-project-dev-fw
+      droplet_tags: ["web-app", "development"]
+      inbound_rules:
+        # SSH access (IMPORTANT: Change to your IP for security!)
+        - protocol: tcp
+          ports: "22"
+          sources: ["0.0.0.0/0"]  # ⚠️ SECURITY: Change to YOUR_IP/32
+        
+        # Rust services access (app-service and auth-service)
+        - protocol: tcp
+          ports: "8000,8001"
+          sources: ["0.0.0.0/0"]  # Public access for demo
+        
+        # Health check endpoint
+        - protocol: tcp
+          ports: "80,443"
+          sources: ["0.0.0.0/0"]  # Standard HTTP/HTTPS
+      
+      outbound_rules:
+        # Internet access for package updates, external APIs
+        - protocol: tcp
+          ports: "all"
+          destinations: ["0.0.0.0/0"]
+        
+        # DNS resolution
+        - protocol: udp
+          ports: "53"
+          destinations: ["0.0.0.0/0"]
+    
+    # Droplet configuration
+    droplet:
+      name: live-bootcamp-project-dev
+      size: s-1vcpu-1gb
+      region: nyc1
+      image: ubuntu-24-04-x64
+      tags: ["web-app", "development"]  # Must match firewall droplet_tags
+      ssh_keys: ["50128130"]  # qipio-test-integration key
+      backups: false
+      monitoring: true
+      ipv6: false
+      user_data: |
+        #cloud-config
+        package_update: true
+        packages:
+          - ca-certificates
+          - curl
+          - git
+        
+        # Create a regular user for deployment
+        users:
+          - name: deploy
+            groups: [adm, cdrom, sudo, dip, plugdev, lxd]
+            sudo: ['ALL=(ALL) NOPASSWD:ALL']
+            shell: /bin/bash
+            ssh_authorized_keys:
+              - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAgQDs3N7tz72FHDTFDobP3PQgs9zV+M7G3SPPxOR3zLuTHmU5LhYRW2m0bliezF3xN/NPm4Dfy0nM8SDpWYu8xowmAgvO68lcvGHr0f3Du985T+Afr55rRqZ7TByJEUmKvEwK0pzBloNvhbdBmpaSPl7oDC3aNXGfXO9xMe+7WNAg8Q==
+        
+        # Install Docker CE with proper repository setup
+        runcmd:
+          # Create keyrings directory
+          - install -m 0755 -d /etc/apt/keyrings
+          # Add Docker's official GPG key
+          - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+          - chmod a+r /etc/apt/keyrings/docker.asc
+          # Add Docker repository to apt sources (single line!)
+          - 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null'
+          # Update package index
+          - apt-get update
+          # Install Docker CE packages
+          - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+          # Start and enable Docker
+          - systemctl start docker
+          - systemctl enable docker
+          # Add deploy user to docker group
+          - usermod -aG docker deploy
+
+  production:
+    # DigitalOcean project assignment
+    project_id: "be754fb7-5ef6-45ae-a41b-bd135195173f"
+    # VPC for network isolation
+    vpc_uuid: "25acfbe9-7876-4f99-ac97-6be1bb89245c"
+    # Production firewall (more restrictive)
+    firewall:
+      name: live-bootcamp-project-prod-fw
+      droplet_tags: ["web-app", "production"]
+      inbound_rules:
+        # SSH access (open for example)
+        - protocol: tcp
+          ports: "22"
+          sources: ["0.0.0.0/0"]  # Open SSH for example
+        
+        # Production web access
+        - protocol: tcp
+          ports: "80,443"
+          sources: ["0.0.0.0/0"]
+        
+        # Application port
+        - protocol: tcp
+          ports: "3000"
+          sources: ["0.0.0.0/0"]
+      
+      outbound_rules:
+        # Restricted outbound (production security)
+        - protocol: tcp
+          ports: "80,443"  # Only HTTP/HTTPS
+          destinations: ["0.0.0.0/0"]
+        
+        - protocol: udp
+          ports: "53"  # DNS only
+          destinations: ["0.0.0.0/0"]
+    
+    # Production droplet (larger, more secure)
+    droplet:
+      name: live-bootcamp-project-prod
+      size: s-1vcpu-2gb
+      region: nyc1
+      image: ubuntu-24-04-x64
+      tags: ["web-app", "production"]
+      ssh_keys: ["50128130"]  # qipio-test-integration key
+      backups: true  # Enable backups for production
+      monitoring: true
+      ipv6: false
+      user_data: |
+        #cloud-config
+        package_update: true
+        package_upgrade: true
+        packages:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+          - fail2ban  # Additional security for production
+          - ufw       # Uncomplicated Firewall
+        
+        # Production security hardening
+        runcmd:
+          - systemctl start docker
+          - systemctl enable docker
+          - systemctl start fail2ban
+          - systemctl enable fail2ban
+          - ufw --force enable
+          - usermod -aG docker $USER
+          
+        # Production logging
+        write_files:
+          - path: /etc/rsyslog.d/50-docker.conf
+            content: |
+              # Docker container logs
+              daemon.* /var/log/docker.log
+            permissions: '0644'
+
+  staging:
+    # DigitalOcean project assignment
+    project_id: "4ccc47f1-fb68-4f75-94df-76ed7bfab90f"
+    # VPC for network isolation
+    vpc_uuid: "ce4bc299-155b-454a-b469-41e790de766f"
+    # Staging firewall (between dev and prod security)
+    firewall:
+      name: live-bootcamp-project-staging-fw
+      droplet_tags: ["web-app", "staging"]
+      inbound_rules:
+        # SSH access (allow from anywhere for example)
+        - protocol: tcp
+          ports: "22"
+          sources: ["0.0.0.0/0"]  # Open SSH for example
+        
+        # Web application access
+        - protocol: tcp
+          ports: "3000"
+          sources: ["0.0.0.0/0"]  # Public access
+        
+        # Health check endpoint
+        - protocol: tcp
+          ports: "80,443"
+          sources: ["0.0.0.0/0"]  # Standard HTTP/HTTPS
+      
+      outbound_rules:
+        # Internet access for updates and external APIs
+        - protocol: tcp
+          ports: "all"
+          destinations: ["0.0.0.0/0"]
+        
+        # DNS resolution
+        - protocol: udp
+          ports: "53"
+          destinations: ["0.0.0.0/0"]
+    
+    # Staging droplet (medium size for testing)
+    droplet:
+      name: live-bootcamp-project-staging
+      size: s-1vcpu-1gb
+      region: nyc1
+      image: ubuntu-24-04-x64
+      tags: ["web-app", "staging"]
+      ssh_keys: ["50128130"]  # qipio-test-integration key
+      backups: false  # No backups needed for staging
+      monitoring: true
+      ipv6: false
+      user_data: |
+        #cloud-config
+        package_update: true
+        package_upgrade: true
+        packages:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+          - curl
+          - git
+        
+        # Configure Docker
+        runcmd:
+          - systemctl start docker
+          - systemctl enable docker
+          - usermod -aG docker $USER
+
+# This configuration generates commands like:
+#
+# For development:
+# doctl compute firewall create --name "live-bootcamp-project-dev-fw" \
+#   --inbound-rules "protocol:tcp,ports:22,source_addresses:0.0.0.0/0 protocol:tcp,ports:3000,source_addresses:0.0.0.0/0" \
+#   --outbound-rules "protocol:tcp,ports:all,destination_addresses:0.0.0.0/0" \
+#   --tag-names "web-app,development"
+#
+# doctl compute droplet create "live-bootcamp-project-dev" \
+#   --size s-1vcpu-1gb \
+#   --region nyc1 \
+#   --image ubuntu-24-04-x64 \
+#   --tag-names "web-app,development" \
+#   --enable-monitoring \
+#   --user-data-file /tmp/qipio-userdata-123456.sh \
+#   --wait

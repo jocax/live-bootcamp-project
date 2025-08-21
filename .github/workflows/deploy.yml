@@ -1,0 +1,47 @@
+name: Deploy to Digital Ocean
+
+on:
+  push:
+    branches: [ main, staging ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup SSH for Qipio
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.QIPIO_DEPLOY_KEY }}
+
+    - name: Install Qipio
+      run: |
+        git clone git@github.com:jocax/qipio.git /tmp/qipio
+        chmod +x /tmp/qipio/qipio
+        echo "/tmp/qipio" >> $GITHUB_PATH
+
+    - name: Setup DO CLI
+      uses: digitalocean/action-doctl@v2
+      with:
+        token: ${{ secrets.DO_API_TOKEN }}
+
+    - name: Deploy
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: |
+        qipio deploy ${{ github.event.inputs.environment || 'staging' }}
