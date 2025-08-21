@@ -3,49 +3,89 @@ extern crate core;
 mod routes;
 pub mod model;
 
+use std::env;
 use std::error::Error;
+use std::net::SocketAddr;
 use axum::Router;
 use axum::routing::post;
-use axum::serve::Serve;
+use axum_server::tls_rustls::RustlsConfig;
 use tower_http::services::ServeDir;
 use crate::routes::{login_handler, logout_handler, signup_handler, verify_2fa_handler, verify_token_handler};
 
 // This struct encapsulates our application-related logic.
 pub struct Application {
-    server: Serve<tokio::net::TcpListener, Router, Router>,
-    // address is exposed as a public field
-    // so we have access to it in tests.
-    pub address: String,
+    address: SocketAddr,
+    router: Router,
+    tls_enabled: bool,
 }
 
 impl Application {
     pub async fn build(address: &str) -> Result<Self, Box<dyn Error>> {
         println!("Build with address: {:?}", address);
-        // Move the Router definition from `main.rs` to here.
-        // Also, remove the `hello` route.
-        // We don't need it at this point!
-        let router  = Router::new()
-            .fallback_service(ServeDir::new("assets"))
-            .route("/api/signup", post(signup_handler))
-            .route("/api/login", post(login_handler))
-            .route("/api/logout", post(logout_handler))
-            .route("/api/verify-2fa", post(verify_2fa_handler))
-            .route("/api/verify-token", post(verify_token_handler))
-            ;
+        
+        let router = create_router();
+        let addr: SocketAddr = address.parse()?;
+        let tls_enabled = get_tls_config();
 
-
-        let listener = tokio::net::TcpListener::bind(address).await?;
-        let listener_address = listener.local_addr()?.to_string();
-        let server = axum::serve(listener, router);
-
-        // Create a new Application instance and return it
         Ok(Application {
-            server,
-            address: listener_address,
+            address: addr,
+            router,
+            tls_enabled,
         })
     }
-    pub async fn run(self) -> Result<(), std::io::Error> {
-        println!("listening on {}", &self.address);
-        self.server.await
+    
+    pub async fn run(self) -> Result<(), Box<dyn Error>> {
+        if self.tls_enabled {
+            println!("Starting auth-service with TLS on {}", self.address);
+            self.start_https_server().await
+        } else {
+            println!("Starting auth-service with HTTP on {}", self.address);
+            self.start_http_server().await
+        }
     }
+    
+    async fn start_https_server(self) -> Result<(), Box<dyn Error>> {
+        let cert_path = env::var("TLS_CERT_PATH")
+            .unwrap_or_else(|_| "/etc/letsencrypt/live/bootcamp-auth.jocax.com/fullchain.pem".to_string());
+        let key_path = env::var("TLS_KEY_PATH")
+            .unwrap_or_else(|_| "/etc/letsencrypt/live/bootcamp-auth.jocax.com/privkey.pem".to_string());
+        
+        let config = RustlsConfig::from_pem_file(cert_path, key_path)
+            .await
+            .map_err(|e| format!("Failed to load TLS certificates: {}", e))?;
+        
+        axum_server::bind_rustls(self.address, config)
+            .serve(self.router.into_make_service())
+            .await
+            .map_err(|e| e.into())
+    }
+    
+    async fn start_http_server(self) -> Result<(), Box<dyn Error>> {
+        let listener = tokio::net::TcpListener::bind(self.address).await?;
+        println!("listening on {}", listener.local_addr()?);
+        axum::serve(listener, self.router).await.map_err(|e| e.into())
+    }
+}
+
+fn get_tls_config() -> bool {
+    // In test mode, always disable TLS
+    #[cfg(test)]
+    return false;
+    
+    // In non-test mode, check environment
+    #[cfg(not(test))]
+    env::var("TLS_ENABLED")
+        .unwrap_or_default()
+        .parse::<bool>()
+        .unwrap_or(false)
+}
+
+fn create_router() -> Router {
+    Router::new()
+        .fallback_service(ServeDir::new("assets"))
+        .route("/api/signup", post(signup_handler))
+        .route("/api/login", post(login_handler))
+        .route("/api/logout", post(logout_handler))
+        .route("/api/verify-2fa", post(verify_2fa_handler))
+        .route("/api/verify-token", post(verify_token_handler))
 }

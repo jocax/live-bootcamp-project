@@ -33,12 +33,16 @@ jobs:
 
     - name: Build and test app-service code
       working-directory: ./app-service
+      env:
+        TLS_ENABLED: false
       run: |
         cargo build --verbose
         cargo test --verbose
 
     - name: Build and test auth-service code
       working-directory: ./auth-service
+      env:
+        TLS_ENABLED: false
       run: |
         cargo build --verbose
         cargo test --verbose
@@ -56,7 +60,8 @@ jobs:
     - name: Create .env file
       run: |
         echo "# Environment variables for live-bootcamp-project" > .env
-        echo "AUTH_SERVICE_IP=${{ vars.DROPLET_IP }}" >> .env
+        echo "AUTH_SERVICE_IP=bootcamp-auth.jocax.com" >> .env
+        echo "TLS_ENABLED=true" >> .env
 
     - name: Build and push Docker images
       uses: docker/bake-action@v2.3.0
@@ -92,6 +97,19 @@ jobs:
           
           # Pull latest images
           docker compose pull
+          
+          # Generate certificates if they don't exist
+          if [ ! -f "./letsencrypt/live/bootcamp-app.jocax.com/fullchain.pem" ]; then
+            echo "Generating SSL certificates..."
+            # Start nginx for ACME challenge
+            docker compose --profile certbot up nginx-acme -d
+            sleep 10
+            # Run certbot to get certificates
+            docker compose --profile certbot run --rm certbot
+            # Stop nginx after certificate generation
+            docker compose --profile certbot stop nginx-acme
+            docker compose --profile certbot rm -f nginx-acme
+          fi
           
           # Start services with latest images
           docker compose up -d

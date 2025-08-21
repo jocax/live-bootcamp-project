@@ -2,6 +2,18 @@ services:
   app-service:
     build:
       context: ./app-service # specify directory where local Dockerfile is located
+    environment:
+      AUTH_SERVICE_IP: localhost
+      TLS_ENABLED: "false"
+    ports:
+      - "8000:8000" # HTTP port for local development
+    volumes: [] # Override volumes for local development
+    
   auth-service:
     build:
       context: ./auth-service # specify directory where local Dockerfile is located
+    environment:
+      TLS_ENABLED: "false"
+    ports:
+      - "8001:8001" # HTTP port for local development
+    volumes: [] # Override volumes for local development
