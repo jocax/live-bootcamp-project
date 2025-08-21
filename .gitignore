@@ -12,7 +12,8 @@
 Cargo.lock
 
 # Qipio Deployment
-.do-deployment/
-.do-deployment/state/
-.droplet-*.json
+qipio.yml
+
+# Logs
 *.log
+
