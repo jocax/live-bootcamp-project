@@ -88,7 +88,7 @@ jobs:
         echo "${{ secrets.TLS_FULL_CHAIN }}" > deploy-certs/fullchain.pem
         echo "${{ secrets.TLS_PRIVATE_KEY }}" > deploy-certs/privkey.pem
         chmod 644 deploy-certs/fullchain.pem
-        chmod 600 deploy-certs/privkey.pem
+        chmod 644 deploy-certs/privkey.pem
         echo "✅ Created certificates from GitHub secrets"
 
     # Copy nginx configuration to production server
