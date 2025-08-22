@@ -22,7 +22,7 @@ logoutLink.addEventListener("click", (e) => {
 });
 
 (() => {
-    fetch('/protected').then(response => {
+    fetch('protected').then(response => {
         if (response.ok) {
             loginLink.style.display = "none";
             logoutLink.style.display = "block";

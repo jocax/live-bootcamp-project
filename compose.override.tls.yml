@@ -1,0 +1,36 @@
+services:
+  nginx:
+    image: nginx:alpine
+    platform: linux/arm64/v8  # For local M3 apple silicon
+    ports:
+      - "80:80"    # HTTP port for redirects
+      - "443:443"  # HTTPS port for TLS testing
+    volumes:
+      - ./nginx.local.conf:/etc/nginx/nginx.conf:ro
+      - ./certs/local/nginx:/etc/nginx/ssl:ro  # Mount self-signed certificates
+      - /dev/null:/etc/nginx/conf.d/default.conf  # Disable default configuration
+
+  app-service:
+    build:
+      context: ./app-service
+    environment:
+      TLS_ENABLED: "true"  # Keep TLS enabled for production-like testing
+      AUTH_SERVICE_HOST_NAME: auth-service
+      TLS_CERT_PATH: "/home/deploy/live-bootcamp/certs/cert.pem"
+      TLS_KEY_PATH: "/home/deploy/live-bootcamp/certs/key.pem"
+    ports:
+      - "8000:8000"  # Expose for direct access during development
+    volumes:
+      - ./certs/local/app-service:/home/deploy/live-bootcamp/certs:ro
+
+  auth-service:
+    build:
+      context: ./auth-service
+    environment:
+      TLS_ENABLED: "true"  # Keep TLS enabled for production-like testing
+      TLS_CERT_PATH: "/home/deploy/live-bootcamp/certs/cert.pem"
+      TLS_KEY_PATH: "/home/deploy/live-bootcamp/certs/key.pem"
+    ports:
+      - "8001:8001"  # Expose for direct access during development
+    volumes:
+      - ./certs/local/auth-service:/home/deploy/live-bootcamp/certs:ro
