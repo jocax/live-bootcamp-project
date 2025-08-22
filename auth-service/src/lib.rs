@@ -7,7 +7,8 @@ use std::env;
 use std::error::Error;
 use std::net::SocketAddr;
 use axum::Router;
-use axum::routing::post;
+use axum::routing::{get, post};
+use axum::response::Html;
 use axum_server::tls_rustls::RustlsConfig;
 use tower_http::services::ServeDir;
 use crate::routes::{login_handler, logout_handler, signup_handler, verify_2fa_handler, verify_token_handler};
@@ -99,12 +100,19 @@ fn get_tls_config() -> bool {
         .unwrap_or(false)
 }
 
+async fn root_handler() -> Html<&'static str> {
+    Html(include_str!("../assets/index.html"))
+}
+
 fn create_router() -> Router {
-    Router::new()
-        .fallback_service(ServeDir::new("assets"))
+    let auth_router = Router::new()
+        .route("/", get(root_handler))
+        .nest_service("/assets", ServeDir::new("assets"))
         .route("/api/signup", post(signup_handler))
         .route("/api/login", post(login_handler))
         .route("/api/logout", post(logout_handler))
         .route("/api/verify-2fa", post(verify_2fa_handler))
-        .route("/api/verify-token", post(verify_token_handler))
+        .route("/api/verify-token", post(verify_token_handler));
+    
+    Router::new().nest("/auth", auth_router)
 }

@@ -1,19 +1,33 @@
 services:
+  nginx:
+    image: nginx:alpine
+    restart: "always"
+    ports:
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy-certs:/etc/nginx/ssl:ro
+    depends_on:
+      - app-service
+      - auth-service
+    networks:
+      - bootcamp-network
+
   app-service:
     image: dev4ever/rust-bootcamp-app-service # specify name of image on Docker Hub
     restart: "always" # automatically restart container when server crashes
     environment: # set up environment variables
-      AUTH_SERVICE_IP: bootcamp-auth.jocax.com
+      AUTH_SERVICE_HOST_NAME: auth-service
       TLS_ENABLED: "true"
       TLS_CERT_PATH: "/home/deploy/live-bootcamp/certs/fullchain.pem"
       TLS_KEY_PATH: "/home/deploy/live-bootcamp/certs/privkey.pem"
-    ports:
-      - "443:8000" # expose HTTPS port
     volumes:
       - ./deploy-certs:/home/deploy/live-bootcamp/certs:ro
     depends_on: # only run app-service after auth-service has started
       auth-service:
         condition: service_started
+    networks:
+      - bootcamp-network
     env_file:
       - .env
 
@@ -24,8 +38,12 @@ services:
       TLS_ENABLED: "true"
       TLS_CERT_PATH: "/home/deploy/live-bootcamp/certs/fullchain.pem"
       TLS_KEY_PATH: "/home/deploy/live-bootcamp/certs/privkey.pem"
-    ports:
-      - "8443:8001" # expose HTTPS port
     volumes:
       - ./deploy-certs:/home/deploy/live-bootcamp/certs:ro
+    networks:
+      - bootcamp-network
+
+networks:
+  bootcamp-network:
+    driver: bridge
 

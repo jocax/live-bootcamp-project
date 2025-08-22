@@ -46,10 +46,12 @@ fn get_tls_config() -> bool {
 }
 
 fn create_app() -> Router {
-    Router::new()
+    let app_router = Router::new()
         .nest_service("/assets", ServeDir::new("assets"))
         .route("/", get(root))
-        .route("/protected", get(protected))
+        .route("/protected", get(protected));
+    
+    Router::new().nest("/app", app_router)
 }
 
 async fn start_https_server(app: Router, addr: SocketAddr) {
@@ -82,20 +84,17 @@ struct IndexTemplate {
 }
 
 async fn root() -> impl IntoResponse {
-    let mut address = env::var("AUTH_SERVICE_IP").unwrap_or("localhost".to_owned());
-    if address.is_empty() {
-        address = "localhost".to_owned();
-    }
+    let auth_hostname = env::var("AUTH_SERVICE_HOST_NAME").unwrap_or("localhost".to_owned());
     
     let tls_enabled = get_tls_config();
     let (protocol, port) = if tls_enabled {
-        ("https", if address == "localhost" { AUTH_SERVICE_PORT } else { 8443 })
+        ("https", AUTH_SERVICE_PORT)
     } else {
         ("http", AUTH_SERVICE_PORT)
     };
     
-    let login_link = format!("{}://{}:{}", protocol, address, port);
-    let logout_link = format!("{}://{}:{}/logout", protocol, address, port);
+    let login_link = format!("{}://{}:{}/auth/api/login", protocol, auth_hostname, port);
+    let logout_link = format!("{}://{}:{}/auth/api/logout", protocol, auth_hostname, port);
 
     let template = IndexTemplate {
         login_link,
@@ -118,14 +117,14 @@ async fn protected(jar: CookieJar) -> impl IntoResponse {
         "token": &jwt_cookie.value(),
     });
 
-    let auth_hostname = env::var("AUTH_SERVICE_HOST_NAME").unwrap_or("0.0.0.0".to_owned());
+    let auth_hostname = env::var("AUTH_SERVICE_HOST_NAME").unwrap_or("localhost".to_owned());
     let tls_enabled = get_tls_config();
     let (protocol, port) = if tls_enabled {
-        ("https", if auth_hostname == "localhost" || auth_hostname == "0.0.0.0" { AUTH_SERVICE_PORT } else { 8443 })
+        ("https", AUTH_SERVICE_PORT)
     } else {
         ("http", AUTH_SERVICE_PORT)
     };
-    let url = format!("{}://{}:{}/verify-token", protocol, auth_hostname, port);
+    let url = format!("{}://{}:{}/auth/api/verify-token", protocol, auth_hostname, port);
 
     let response = match api_client.post(&url).json(&verify_token_body).send().await {
         Ok(response) => response,

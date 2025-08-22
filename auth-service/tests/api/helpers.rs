@@ -14,13 +14,24 @@ impl TestApp {
         //we use v7 due to the time support and natural order for database indexing
         format!("{}@example.com", Uuid::now_v7())
     }
+    //we use in the unit tests the same url as later in the deployment via docker compose and nginx
+    //http://server:port/auth/api
+    fn api_url(&self, endpoint: &str) -> String {
+        format!("{}/auth/api{}", self.address, endpoint)
+    }
+
+    //we use in the unit tests the same url as later in the deployment via docker compose and nginx
+    // http://server:port/auth
+    fn ui_url(&self, path: &str) -> String {
+        format!("{}/auth{}", self.address, path)
+    }
 }
 
 impl TestApp {
     pub async fn new() -> Self {
         // Ensure TLS is disabled for tests
         std::env::set_var("TLS_ENABLED", "false");
-        
+
         let app = Application::build("127.0.0.1:0")
             .await
             .expect("Failed to build app");
@@ -43,22 +54,24 @@ impl TestApp {
         // Create new `TestApp` instance and return it
         TestApp {
             address,
-            http_client,
+            http_client: http_client,
         }
     }
 
     pub async fn get_root(&self) -> reqwest::Response {
-        println!("GET {}", &self.address);
+        let url = self.ui_url(""); // Try without trailing slash first
+        println!("GET {}", &url);
         self.http_client
-            .get(&format!("{}/", &self.address))
+            .get(&url)
             .send()
             .await
             .expect("Failed to execute request.")
     }
     pub async fn post_signup(&self, signup: &SignUpRequest) -> reqwest::Response {
-        println!("POST {}/api/signup", &self.address);
+        let url = self.api_url("/signup");
+        println!("POST {}",&url);
         self.http_client
-            .post(&format!("{}/api/signup", &self.address))
+            .post(url)
             .json(&signup)
             .send()
             .await
@@ -68,8 +81,9 @@ impl TestApp {
     where
         Body: serde::Serialize,
     {
+        let url = self.api_url("/signup");
         self.http_client
-            .post(&format!("{}/api/signup", &self.address))
+            .post(&url)
             .json(body)
             .send()
             .await
@@ -78,9 +92,10 @@ impl TestApp {
 
 
     pub async fn post_login(&self, login_request: &LoginRequest) -> reqwest::Response {
-        println!("POST {}/api/login", &self.address);
+        let url = self.api_url("/login");
+        println!("POST {}", &url);
         self.http_client
-            .post(&format!("{}/api/login", &self.address))
+            .post(&url)
             .json(&login_request)
             .send()
             .await
@@ -88,9 +103,10 @@ impl TestApp {
     }
 
     pub async fn post_logout(&self, logout_request: &LogoutRequest) -> reqwest::Response {
-        println!("POST {}/api/logout", &self.address);
+        let url = self.api_url("/logout");
+        println!("POST {}", &url);
         self.http_client
-            .post(&format!("{}/api/logout", &self.address))
+            .post(&url)
             .json(&logout_request)
             .send()
             .await
@@ -98,9 +114,10 @@ impl TestApp {
     }
 
     pub async fn post_verify2fa(&self, verify_2fa_request: &Verify2FARequest) -> reqwest::Response {
-        println!("POST {}/api/verify-2fa", &self.address);
+        let url = self.api_url("/verify-2fa");
+        println!("POST {}", &url);
         self.http_client
-            .post(&format!("{}/api/verify-2fa", &self.address))
+            .post(&url)
             .json(&verify_2fa_request)
             .send()
             .await
@@ -111,9 +128,10 @@ impl TestApp {
         &self,
         verify_token_request: &VerifyTokenRequest,
     ) -> reqwest::Response {
-        println!("POST {}/api/verify-token", &self.address);
+        let url = self.api_url("/verify-token");
+        println!("POST {}", &url);
         self.http_client
-            .post(&format!("{}/api/verify-token", &self.address))
+            .post(&url)
             .json(&verify_token_request.get_token())
             .send()
             .await
