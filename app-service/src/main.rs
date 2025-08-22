@@ -56,13 +56,11 @@ async fn favicon() -> impl IntoResponse {
 }
 
 fn create_app() -> Router {
-    let app_router = Router::new()
+    Router::new()
         .nest_service("/assets", ServeDir::new("assets"))
         .route("/", get(root))
         .route("/protected", get(protected))
-        .route("/favicon.ico", get(favicon));
-
-    Router::new().nest("/app", app_router)
+        .route("/favicon.ico", get(favicon))
 }
 
 async fn start_https_server(app: Router, addr: SocketAddr) {
