@@ -25,11 +25,12 @@ qipio.yml
 *.env
 **/.env
 
-# SSL Certificates
+# SSL Certificates (use GitHub secrets instead)
 certs/
+deploy-certs/*.pem
+deploy-certs/*.crt
+deploy-certs/*.key
 *.pem
 *.crt
 *.key
 /generate-certs.sh
-!/deploy-certs/fullchain.pem
-!/deploy-certs/privkey.pem
