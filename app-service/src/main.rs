@@ -20,9 +20,9 @@ const APP_SERVICE_PORT: u16 = 8000u16;
 async fn main() {
     let app = create_app();
     let addr = SocketAddr::from(([0, 0, 0, 0], APP_SERVICE_PORT));
-    
+
     let tls_enabled = get_tls_config();
-    
+
     if tls_enabled {
         println!("Starting app-service with TLS on {}", addr);
         start_https_server(app, addr).await;
@@ -36,7 +36,7 @@ fn get_tls_config() -> bool {
     // In test mode, always disable TLS
     #[cfg(test)]
     return false;
-    
+
     // In non-test mode, check environment
     #[cfg(not(test))]
     env::var("TLS_ENABLED")
@@ -45,12 +45,23 @@ fn get_tls_config() -> bool {
         .unwrap_or(false)
 }
 
+async fn favicon() -> impl IntoResponse {
+    match std::fs::read("assets/favicon.ico") {
+        Ok(icon) => (
+            [("Content-Type", "image/x-icon")],
+            icon
+        ).into_response(),
+        Err(_) => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
 fn create_app() -> Router {
     let app_router = Router::new()
         .nest_service("/assets", ServeDir::new("assets"))
         .route("/", get(root))
-        .route("/protected", get(protected));
-    
+        .route("/protected", get(protected))
+        .route("/favicon.ico", get(favicon));
+
     Router::new().nest("/app", app_router)
 }
 
@@ -59,11 +70,11 @@ async fn start_https_server(app: Router, addr: SocketAddr) {
         .unwrap_or_else(|_| "/etc/letsencrypt/live/bootcamp-app.jocax.com/fullchain.pem".to_string());
     let key_path = env::var("TLS_KEY_PATH")
         .unwrap_or_else(|_| "/etc/letsencrypt/live/bootcamp-app.jocax.com/privkey.pem".to_string());
-    
+
     let config = RustlsConfig::from_pem_file(cert_path, key_path)
         .await
         .expect("Failed to load TLS certificates");
-    
+
     axum_server::bind_rustls(addr, config)
         .serve(app.into_make_service())
         .await
@@ -85,14 +96,14 @@ struct IndexTemplate {
 
 async fn root() -> impl IntoResponse {
     let auth_hostname = env::var("AUTH_SERVICE_HOST_NAME").unwrap_or("localhost".to_owned());
-    
+
     let tls_enabled = get_tls_config();
     let (protocol, port) = if tls_enabled {
         ("https", AUTH_SERVICE_PORT)
     } else {
         ("http", AUTH_SERVICE_PORT)
     };
-    
+
     let login_link = format!("{}://{}:{}/auth/api/login", protocol, auth_hostname, port);
     let logout_link = format!("{}://{}:{}/auth/api/logout", protocol, auth_hostname, port);
 

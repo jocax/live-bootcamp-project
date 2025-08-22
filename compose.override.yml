@@ -1,12 +1,14 @@
 services:
   nginx:
+    image: nginx:alpine
+    platform: linux/arm64/v8  # For local M3 apple silicon
     ports:
       - "80:80"    # Use HTTP port 80 for local development
       - "443:443"  # Keep HTTPS available for testing
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       # Remove SSL certificate volumes for local development
-      
+
   app-service:
     build:
       context: ./app-service
@@ -17,13 +19,13 @@ services:
       - "8000:8000"  # Expose for direct access during development
     # Remove certificate volumes for local development
     volumes: []
-    
+
   auth-service:
     build:
       context: ./auth-service
     environment:
       TLS_ENABLED: "false"
     ports:
-      - "8001:8001"  # Expose for direct access during development  
+      - "8001:8001"  # Expose for direct access during development
     # Remove certificate volumes for local development
     volumes: []

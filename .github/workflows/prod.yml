@@ -60,7 +60,7 @@ jobs:
     - name: Create .env file
       run: |
         echo "# Environment variables for live-bootcamp-project" > .env
-        echo "AUTH_SERVICE_IP=bootcamp-auth.jocax.com" >> .env
+        echo "AUTH_SERVICE_HOST_NAME=auth-service" >> .env
         echo "TLS_ENABLED=true" >> .env
 
     - name: Build and push Docker images
@@ -69,7 +69,6 @@ jobs:
         push: true
         files: |
           compose.yml
-          compose.override.yml
         set: |
           *.cache-from=type=gha
           *.cache-to=type=gha,mode=max
@@ -82,6 +81,17 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    # Copy nginx configuration to production server
+    - name: Copy nginx configuration
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ vars.DROPLET_IP }}
+        username: deploy
+        key: ${{ secrets.QIPIO_DEPLOY_KEY }}
+        source: "nginx.conf"
+        target: "/home/deploy/live-bootcamp/"
+        overwrite: true
+
     - name: Deploy Application
       uses: appleboy/ssh-action@v0.1.7
       with:
@@ -93,10 +103,10 @@ jobs:
           cd /home/deploy/live-bootcamp
           
           # Stop current services
-          docker compose down
+          sudo docker compose down
           
           # Pull latest images
-          docker compose pull
+          sudo docker compose pull
           
           # Verify certificates exist (they should be copied by qipio)
           if [ ! -f "./deploy-certs/fullchain.pem" ] || [ ! -f "./deploy-certs/privkey.pem" ]; then
@@ -105,8 +115,45 @@ jobs:
             exit 1
           fi
           
+          # Verify nginx configuration exists
+          if [ ! -f "./nginx.conf" ]; then
+            echo "ERROR: nginx.conf not found"
+            exit 1
+          fi
+          
           # Start services with latest images
-          docker compose up -d
+          sudo docker compose up -d
+          
+          # Wait for services to start
+          sleep 10
+          
+          # Verify services are responding on new paths
+          echo "Testing path-based routing..."
+          
+          # Test app service route
+          if curl -f -s https://live-bootcamp.jocax.com/app > /dev/null; then
+            echo "✅ App service accessible at /app"
+          else
+            echo "❌ App service not accessible at /app"
+            exit 1
+          fi
+          
+          # Test auth service route  
+          if curl -f -s https://live-bootcamp.jocax.com/auth > /dev/null; then
+            echo "✅ Auth service accessible at /auth"
+          else
+            echo "❌ Auth service not accessible at /auth"
+            exit 1
+          fi
+          
+          # Test favicon
+          if curl -f -s https://live-bootcamp.jocax.com/favicon.ico > /dev/null; then
+            echo "✅ Favicon accessible"
+          else
+            echo "⚠️  Favicon not accessible (non-critical)"
+          fi
+          
+          echo "🎉 Path-based routing deployment successful!"
           
           # Clean up unused images and containers
           docker system prune -f
