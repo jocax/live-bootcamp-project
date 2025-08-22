@@ -1,0 +1,12 @@
+services:
+  app-service:
+    build:
+      context: ./app-service
+      dockerfile: Dockerfile
+    image: dev4ever/rust-bootcamp-app-service
+    
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    image: dev4ever/rust-bootcamp-auth-service
