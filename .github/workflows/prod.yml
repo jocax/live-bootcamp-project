@@ -98,17 +98,11 @@ jobs:
           # Pull latest images
           docker compose pull
           
-          # Generate certificates if they don't exist
-          if [ ! -f "./letsencrypt/live/bootcamp-app.jocax.com/fullchain.pem" ]; then
-            echo "Generating SSL certificates..."
-            # Start nginx for ACME challenge
-            docker compose --profile certbot up nginx-acme -d
-            sleep 10
-            # Run certbot to get certificates
-            docker compose --profile certbot run --rm certbot
-            # Stop nginx after certificate generation
-            docker compose --profile certbot stop nginx-acme
-            docker compose --profile certbot rm -f nginx-acme
+          # Verify certificates exist (they should be copied by qipio)
+          if [ ! -f "./deploy-certs/fullchain.pem" ] || [ ! -f "./deploy-certs/privkey.pem" ]; then
+            echo "ERROR: SSL certificates not found in ./deploy-certs/"
+            echo "Make sure certificates are copied via qipio before deployment"
+            exit 1
           fi
           
           # Start services with latest images

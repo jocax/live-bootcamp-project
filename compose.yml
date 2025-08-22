@@ -5,17 +5,15 @@ services:
     environment: # set up environment variables
       AUTH_SERVICE_IP: bootcamp-auth.jocax.com
       TLS_ENABLED: "true"
-      TLS_CERT_PATH: "/etc/letsencrypt/live/bootcamp-app.jocax.com/fullchain.pem"
-      TLS_KEY_PATH: "/etc/letsencrypt/live/bootcamp-app.jocax.com/privkey.pem"
+      TLS_CERT_PATH: "/home/deploy/live-bootcamp/certs/fullchain.pem"
+      TLS_KEY_PATH: "/home/deploy/live-bootcamp/certs/privkey.pem"
     ports:
       - "443:8000" # expose HTTPS port
     volumes:
-      - ./letsencrypt:/etc/letsencrypt:ro
+      - ./deploy-certs:/home/deploy/live-bootcamp/certs:ro
     depends_on: # only run app-service after auth-service has started
       auth-service:
         condition: service_started
-      certbot:
-        condition: service_completed_successfully
     env_file:
       - .env
 
@@ -24,40 +22,10 @@ services:
     restart: "always" # automatically restart container when server crashes
     environment:
       TLS_ENABLED: "true"
-      TLS_CERT_PATH: "/etc/letsencrypt/live/bootcamp-auth.jocax.com/fullchain.pem"
-      TLS_KEY_PATH: "/etc/letsencrypt/live/bootcamp-auth.jocax.com/privkey.pem"
+      TLS_CERT_PATH: "/home/deploy/live-bootcamp/certs/fullchain.pem"
+      TLS_KEY_PATH: "/home/deploy/live-bootcamp/certs/privkey.pem"
     ports:
       - "8443:8001" # expose HTTPS port
     volumes:
-      - ./letsencrypt:/etc/letsencrypt:ro
-    depends_on:
-      certbot:
-        condition: service_completed_successfully
+      - ./deploy-certs:/home/deploy/live-bootcamp/certs:ro
 
-  certbot:
-    image: certbot/certbot
-    profiles: ["certbot"]
-    volumes:
-      - ./letsencrypt:/etc/letsencrypt
-      - ./certbot-var:/var/lib/letsencrypt
-      - ./certbot-web:/var/www/certbot
-    command: >
-      sh -c "
-        certbot certonly --webroot
-        --webroot-path=/var/www/certbot
-        --email ms@jocax.com
-        --agree-tos --no-eff-email
-        -d bootcamp-app.jocax.com
-        -d bootcamp-auth.jocax.com
-        --non-interactive --keep-until-expiring
-      "
-
-  nginx-acme:
-    image: nginx:alpine
-    profiles: ["certbot"]
-    ports:
-      - "80:80"
-    volumes:
-      - ./certbot-web:/var/www/certbot
-      - ./nginx-acme.conf:/etc/nginx/nginx.conf
-    restart: unless-stopped
