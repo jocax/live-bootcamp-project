@@ -24,3 +24,12 @@ qipio.yml
 !.env.sample
 *.env
 **/.env
+
+# SSL Certificates
+certs/
+*.pem
+*.crt
+*.key
+/generate-certs.sh
+!/deploy-certs/fullchain.pem
+!/deploy-certs/privkey.pem
