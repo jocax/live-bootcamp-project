@@ -1,0 +1,2 @@
+# This file ensures the deploy-certs directory is preserved in git
+# Actual certificate files are created from GitHub secrets during deployment

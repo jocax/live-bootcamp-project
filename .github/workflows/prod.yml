@@ -81,6 +81,16 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    # Create TLS certificates from GitHub secrets
+    - name: Create TLS certificates from secrets
+      run: |
+        mkdir -p deploy-certs
+        echo "${{ secrets.TLS_FULL_CHAIN }}" > deploy-certs/fullchain.pem
+        echo "${{ secrets.TLS_PRIVATE_KEY }}" > deploy-certs/privkey.pem
+        chmod 644 deploy-certs/fullchain.pem
+        chmod 600 deploy-certs/privkey.pem
+        echo "✅ Created certificates from GitHub secrets"
+
     # Copy nginx configuration to production server
     - name: Copy nginx configuration
       uses: appleboy/scp-action@v0.1.7
@@ -89,6 +99,17 @@ jobs:
         username: deploy
         key: ${{ secrets.QIPIO_DEPLOY_KEY }}
         source: "nginx.conf"
+        target: "/home/deploy/live-bootcamp/"
+        overwrite: true
+
+    # Copy TLS certificates to production server
+    - name: Copy TLS certificates to production server
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ vars.DROPLET_IP }}
+        username: deploy
+        key: ${{ secrets.QIPIO_DEPLOY_KEY }}
+        source: "deploy-certs/*"
         target: "/home/deploy/live-bootcamp/"
         overwrite: true
 
@@ -108,12 +129,18 @@ jobs:
           # Pull latest images
           sudo docker compose pull
           
-          # Verify certificates exist (they should be copied by qipio)
+          # Verify certificates exist and have correct permissions
           if [ ! -f "./deploy-certs/fullchain.pem" ] || [ ! -f "./deploy-certs/privkey.pem" ]; then
             echo "ERROR: SSL certificates not found in ./deploy-certs/"
-            echo "Make sure certificates are copied via qipio before deployment"
+            echo "This should not happen as certificates are copied from GitHub secrets"
             exit 1
           fi
+          
+          # Ensure correct ownership and permissions for certificates
+          sudo chown deploy:deploy ./deploy-certs/fullchain.pem ./deploy-certs/privkey.pem
+          chmod 644 ./deploy-certs/fullchain.pem
+          chmod 600 ./deploy-certs/privkey.pem
+          echo "✅ Certificate permissions verified"
           
           # Verify nginx configuration exists
           if [ ! -f "./nginx.conf" ]; then
