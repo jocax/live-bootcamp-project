@@ -1,8 +1,7 @@
+use auth_service::api::signup::SignUpRequest;
 use crate::api::TestApp;
-use auth_service::model::SignUpRequest;
 
 #[tokio::test]
-#[ignore] //we ignore the test
 async fn signup_should_return_201() {
     let app = TestApp::new().await;
 
@@ -45,7 +44,7 @@ async fn should_return_422_if_malformed_input_json() {
 }
 
 #[tokio::test]
-async fn should_return_422_if_malformed_input_entity() {
+async fn should_return_400_if_malformed_input_entity() {
     let app = TestApp::new().await;
 
     let test_cases = [
@@ -56,7 +55,7 @@ async fn should_return_422_if_malformed_input_entity() {
         let response = app.post_signup(&test_case).await;
         assert_eq!(
             response.status().as_u16(),
-            422,
+            400,
             "Failed for input: {:?}",
             test_case
         );

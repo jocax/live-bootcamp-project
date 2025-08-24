@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = [
+    "app-service",
+    "auth-service"
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+authors = ["jocax"]
+description = "Let's go rusty live bootcamp"
+license = "MIT"
+repository = "https://github.com/jocax/live-bootcamp-project"
+keywords = ["rust"]
+
+[workspace.dependencies]
+axum = { version = "0.8"}
+axum-extra = { version = "0.10", features = ["cookie"]}
+axum-server = { version = "0.7", features = ["tls-rustls"]}
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["fs"] }
+serde_json = { version = "1"}
+serde = { version = "1", features = ["derive"]}
+derivative = { version = "2"}
+validator = { version = "0", features = ["derive"]}
+uuid = { version = "1", features = ["v7"]}
+askama = {  version = "0.14"}
+reqwest = { version = "0.12", default-features = false, features = ["json"] }

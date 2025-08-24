@@ -1,4 +1,4 @@
-use auth_service::model::LogoutRequest;
+use auth_service::api::logout::LogoutRequest;
 use crate::api::TestApp;
 
 #[tokio::test]

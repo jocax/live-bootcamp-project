@@ -1,4 +1,4 @@
-use auth_service::model::VerifyTokenRequest;
+use auth_service::api::verify_token::VerifyTokenRequest;
 use crate::api::TestApp;
 
 #[tokio::test]

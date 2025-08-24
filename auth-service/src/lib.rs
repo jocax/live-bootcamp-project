@@ -1,14 +1,13 @@
-extern crate core;
-
 mod routes;
-pub mod model;
+pub mod api;
+mod domain;
 
 use std::env;
 use std::error::Error;
 use std::net::SocketAddr;
 use axum::Router;
-use axum::routing::{get, post};
 use axum::response::Html;
+use axum::routing::{get, post};
 use axum_server::tls_rustls::RustlsConfig;
 use tower_http::services::ServeDir;
 use crate::routes::{login_handler, logout_handler, signup_handler, verify_2fa_handler, verify_token_handler};

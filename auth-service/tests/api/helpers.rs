@@ -1,8 +1,10 @@
-use auth_service::model::{
-    LoginRequest, LogoutRequest, SignUpRequest, Verify2FARequest, VerifyTokenRequest,
-};
 use auth_service::Application;
 use uuid::Uuid;
+use auth_service::api::login::LoginRequest;
+use auth_service::api::logout::LogoutRequest;
+use auth_service::api::signup::SignUpRequest;
+use auth_service::api::verify_2fa::Verify2FARequest;
+use auth_service::api::verify_token::VerifyTokenRequest;
 
 pub struct TestApp {
     pub address: String,

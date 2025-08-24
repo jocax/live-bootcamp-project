@@ -1,4 +1,4 @@
-use auth_service::model::LoginRequest;
+use auth_service::api::login::LoginRequest;
 use crate::api::TestApp;
 
 #[tokio::test]

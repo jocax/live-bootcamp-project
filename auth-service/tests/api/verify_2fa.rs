@@ -1,4 +1,4 @@
-use auth_service::model::Verify2FARequest;
+use auth_service::api::verify_2fa::Verify2FARequest;
 use crate::api::TestApp;
 
 #[tokio::test]
