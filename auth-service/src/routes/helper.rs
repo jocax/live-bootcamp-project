@@ -1,7 +1,8 @@
 use axum::http::{HeaderMap, StatusCode};
 use axum::Json;
 use axum::response::IntoResponse;
-use crate::api::error::ErrorResponse;
+use validator::{ValidationErrors};
+use crate::api::error::{AuthAPIError};
 use crate::services::hashmap_user_store::UserStoreError;
 
 pub fn map_to_response<T>(status_code: StatusCode, headers: Option<HeaderMap>, data: T) -> impl IntoResponse
@@ -11,15 +12,21 @@ where
         (status_code, headers, Json(data))
 }
 
-pub fn map_error_to_response(error: UserStoreError) -> impl IntoResponse {
-    let (status_code, error_message) = match error {
-        UserStoreError::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
-        UserStoreError::UserNotFound => (StatusCode::NOT_FOUND, "User not found"),
-        UserStoreError::InvalidCredentials => (StatusCode::UNAUTHORIZED, "Invalid credentials"),
-        UserStoreError::UnexpectedError => (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error occurred"),
+pub fn map_user_store_error_to_response(error: UserStoreError) -> AuthAPIError {
+    let auth_api_error = match error {
+        UserStoreError::UserAlreadyExists => AuthAPIError::UserAlreadyExists,
+        UserStoreError::UserNotFound => AuthAPIError::UserNotFound,
+        UserStoreError::InvalidCredentials => AuthAPIError::InvalidCredentials,
+        UserStoreError::UnexpectedError => AuthAPIError::UnexpectedError,
     };
+    auth_api_error
+}
 
-    (status_code, Json(ErrorResponse::new(error_message.to_string())))
+pub fn map_validation_errors_to_response(errors: ValidationErrors) -> AuthAPIError {
+    let auth_api_error = match errors {
+        _ => AuthAPIError::InvalidFormat,
+    };
+    auth_api_error
 }
 
 #[cfg(test)]
@@ -61,7 +68,7 @@ mod tests {
     #[tokio::test]
     async fn test_build_error_response() {
 
-        let response = map_error_to_response(UserStoreError::UserAlreadyExists).into_response();
+        let response = map_user_store_error_to_response(UserStoreError::UserAlreadyExists).into_response();
         assert!(response.status().is_client_error());
         assert_eq!(response.status(), StatusCode::CONFLICT);
 

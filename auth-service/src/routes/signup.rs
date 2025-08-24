@@ -1,53 +1,62 @@
-use axum::extract::State;
-use axum::http::{StatusCode};
-use axum::Json;
-use axum::response::IntoResponse;
-use validator::Validate;
-use crate::api::error::ErrorResponse;
+use crate::api::error::{AuthAPIError};
 use crate::api::signup::{SignUpRequest, SignUpResponse};
-use crate::AppState;
 use crate::domain::user::User;
-use crate::routes::helper::{map_error_to_response, map_to_response};
+use crate::routes::helper::{
+    map_to_response, map_user_store_error_to_response, map_validation_errors_to_response,
+};
+use crate::AppState;
+use axum::extract::State;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::Json;
+use validator::Validate;
 
-pub async fn signup_handler(State(app_state): State<AppState>, Json(request): Json<SignUpRequest>) -> impl IntoResponse {
+pub async fn signup_handler(
+    State(app_state): State<AppState>,
+    Json(request): Json<SignUpRequest>,
+) -> Result<impl IntoResponse, AuthAPIError> {
     // Validate the request
-    if let Err(errors) = request.validate() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new( format!("Validation error: {:?}", errors))
-            )).into_response()
+    let validation_result = request.validate();
+    if validation_result.is_err() {
+        return  Err(map_validation_errors_to_response(
+            validation_result.unwrap_err().to_owned()));
     }
 
-    let user = User::new(request.get_email(), request.get_password(), request.get_requires2fa());
+    let user = User::new(
+        request.get_email(),
+        request.get_password(),
+        request.get_requires2fa(),
+    );
+
     let mut user_store = app_state.user_store.write().await;
 
     let result = user_store.add_user(user);
 
     if result.is_ok() {
-        map_to_response(StatusCode::CREATED, None, SignUpResponse::new(
-            "User created successfully!".to_string(),
-        )).into_response()
+        Ok(map_to_response(
+            StatusCode::CREATED,
+            None,
+            SignUpResponse::new("User created successfully!".to_string()),
+        ))
     } else {
-        map_error_to_response(result.unwrap_err()).into_response()
+        Err(map_user_store_error_to_response(result.unwrap_err()))
     }
-
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::UserStoreType;
     use super::*;
+    use crate::UserStoreType;
 
     #[tokio::test]
     async fn test_signup_handler() {
-
         let user_store = UserStoreType::default();
         let app_state = State(AppState { user_store });
 
         let signup_request = SignUpRequest::new(
             String::from("user@example.com"),
             String::from("myPasssword"),
-            false
+            false,
         );
 
         let request = Json(signup_request);
