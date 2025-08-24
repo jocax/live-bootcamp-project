@@ -1,12 +1,12 @@
 services:
   app-service:
     build:
-      context: ./app-service
-      dockerfile: Dockerfile
+      context: .  # This is the key - workspace root as context
+      dockerfile: app-service/Dockerfile
     image: dev4ever/rust-bootcamp-app-service
-    
+
   auth-service:
     build:
-      context: ./auth-service
-      dockerfile: Dockerfile
+      context: .  # This is the key - workspace root as context
+      dockerfile: auth-service/Dockerfile
     image: dev4ever/rust-bootcamp-auth-service

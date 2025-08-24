@@ -1,0 +1,70 @@
+use axum::http::{HeaderMap, StatusCode};
+use axum::Json;
+use axum::response::IntoResponse;
+use crate::api::error::ErrorResponse;
+use crate::services::hashmap_user_store::UserStoreError;
+
+pub fn map_to_response<T>(status_code: StatusCode, headers: Option<HeaderMap>, data: T) -> impl IntoResponse
+where
+    T: serde::Serialize,
+{
+        (status_code, headers, Json(data))
+}
+
+pub fn map_error_to_response(error: UserStoreError) -> impl IntoResponse {
+    let (status_code, error_message) = match error {
+        UserStoreError::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
+        UserStoreError::UserNotFound => (StatusCode::NOT_FOUND, "User not found"),
+        UserStoreError::InvalidCredentials => (StatusCode::UNAUTHORIZED, "Invalid credentials"),
+        UserStoreError::UnexpectedError => (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error occurred"),
+    };
+
+    (status_code, Json(ErrorResponse::new(error_message.to_string())))
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::http::header::SET_COOKIE;
+    use serde_json;
+    use crate::api::signup::SignUpResponse;
+    use crate::api::verify_token::VerifyTokenResponse;
+    use super::*;
+
+    #[tokio::test]
+    async fn test_build_success_response_without_headers() {
+
+        let response_payload = SignUpResponse::new("User created successfully".to_string());
+        let response = map_to_response(StatusCode::OK, None, response_payload).into_response();
+        assert!(response.status().is_success());
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body_value: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body_value["message"], "User created successfully");
+
+    }
+
+    #[tokio::test]
+    async fn test_build_success_response_with_headers() {
+
+        let mut headers = HeaderMap::new();
+        headers.insert(SET_COOKIE, "jwt=myToken; Path=/; HttpOnly; SameSite=Lax".parse().unwrap());
+
+        let response_payload = VerifyTokenResponse::new(true);
+        let response = map_to_response(StatusCode::OK, Some(headers), response_payload).into_response();
+        assert!(response.status().is_success());
+
+        let cookie_header = response.headers().get(SET_COOKIE).unwrap();
+        assert_eq!(cookie_header.to_str().unwrap(), "jwt=myToken; Path=/; HttpOnly; SameSite=Lax");
+
+    }
+
+    #[tokio::test]
+    async fn test_build_error_response() {
+
+        let response = map_error_to_response(UserStoreError::UserAlreadyExists).into_response();
+        assert!(response.status().is_client_error());
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+
+    }
+
+}

@@ -1,7 +1,6 @@
 [package]
 name = "app-service"
-version = { workspace = true }
-edition = { workspace = true }
+edition = "2021"
 
 [dependencies]
 axum = { workspace = true }

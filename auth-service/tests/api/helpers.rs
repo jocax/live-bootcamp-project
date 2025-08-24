@@ -1,4 +1,4 @@
-use auth_service::Application;
+use auth_service::{AppState, Application, UserStoreType};
 use uuid::Uuid;
 use auth_service::api::login::LoginRequest;
 use auth_service::api::logout::LogoutRequest;
@@ -31,10 +31,14 @@ impl TestApp {
 
 impl TestApp {
     pub async fn new() -> Self {
+
+        let user_store = UserStoreType::default();
+        let app_state = AppState::new(user_store);
+        
         // Ensure TLS is disabled for tests
         std::env::set_var("TLS_ENABLED", "false");
 
-        let app = Application::build("127.0.0.1:0")
+        let app = Application::build(app_state,"127.0.0.1:0")
             .await
             .expect("Failed to build app");
 
