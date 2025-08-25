@@ -1,3 +1,4 @@
+pub mod validations;
 pub mod api;
 mod routes;
 pub mod domain;

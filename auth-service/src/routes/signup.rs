@@ -10,21 +10,27 @@ use axum::http::StatusCode;
 use axum::Json;
 use axum::response::IntoResponse;
 use validator::Validate;
+use crate::domain::types::{Email, Password};
 
 pub async fn signup_handler(
     State(app_state): State<AppState>,
     Json(request): Json<SignUpRequest>,
 ) -> Result<impl IntoResponse, AuthAPIError> {
+
     // Validate the request
     let validation_result = request.validate();
+
     if validation_result.is_err() {
         return  Err(map_validation_errors_to_response(
             validation_result.unwrap_err().to_owned()));
     }
 
+    let email = request.get_email();
+    let password = request.get_password();
+
     let user = User::new(
-        request.get_email(),
-        request.get_password(),
+        Email::try_from(email).unwrap(),
+        Password::try_from(password).unwrap(),
         request.get_requires2fa(),
     );
 
@@ -47,6 +53,9 @@ pub async fn signup_handler(
 mod tests {
     use axum::body::to_bytes;
     use axum::response::Response;
+    use fake::rand::distr::Alphanumeric;
+    use fake::rand::{rng};
+    use fake::Rng;
     use serde_json::Value;
     use crate::domain::data_stores::{MockUserStore, UserStoreError};
     use super::*;
@@ -117,7 +126,7 @@ mod tests {
         // Verify error message
         let body = extract_json_body(response).await;
         assert!(body["errors"]["email"].is_array());
-        assert_eq!(body["errors"]["email"][0], "Valid email required");
+        assert_eq!(body["errors"]["email"][0], "Email must have a valid domain with TLD");
     }
 
     #[tokio::test]
@@ -140,7 +149,7 @@ mod tests {
 
         let body = extract_json_body(response).await;
         assert!(body["errors"]["email"].is_array());
-        assert_eq!(body["errors"]["email"][0], "Valid email required");
+        assert_eq!(body["errors"]["email"][0], "Email must have a valid domain with TLD");
     }
 
     #[tokio::test]
@@ -163,7 +172,7 @@ mod tests {
 
         let body = extract_json_body(response).await;
         assert!(body["errors"]["password"].is_array());
-        assert_eq!(body["errors"]["password"][0], "Password must be 8-32 characters");
+        assert_eq!(body["errors"]["password"][0], "Password must be 8-32 characters, must contain at least letters and numbers");
     }
 
     #[tokio::test]
@@ -187,7 +196,7 @@ mod tests {
 
         let body = extract_json_body(response).await;
         assert!(body["errors"]["password"].is_array());
-        assert_eq!(body["errors"]["password"][0], "Password must be 8-32 characters");
+        assert_eq!(body["errors"]["password"][0], "Password must be 8-32 characters, must contain at least letters and numbers");
     }
 
     #[tokio::test]
@@ -213,8 +222,8 @@ mod tests {
         // Should have errors for both fields
         assert!(body["errors"]["email"].is_array());
         assert!(body["errors"]["password"].is_array());
-        assert_eq!(body["errors"]["email"][0], "Valid email required");
-        assert_eq!(body["errors"]["password"][0], "Password must be 8-32 characters");
+        assert_eq!(body["errors"]["email"][0], "Email must have a valid domain with TLD");
+        assert_eq!(body["errors"]["password"][0], "Password must be 8-32 characters, must contain at least letters and numbers");
     }
 
     #[tokio::test]
@@ -224,7 +233,7 @@ mod tests {
             mock.expect_add_user().returning(|_| Ok(()));
         });
 
-        let signup_request = create_signup_request("user@example.com", "12345678", false);
+        let signup_request = create_signup_request("user@example.com", "1234567A", false);
         let request = Json(signup_request);
 
         // Act
@@ -241,7 +250,12 @@ mod tests {
             mock.expect_add_user().returning(|_| Ok(()));
         });
 
-        let password_32_chars = "a".repeat(32);
+        let password_32_chars: String = rng()
+            .sample_iter(&Alphanumeric)
+            .take(32)
+            .map(char::from)
+            .collect();
+
         let signup_request = create_signup_request("user@example.com", &password_32_chars, false);
         let request = Json(signup_request);
 
@@ -374,5 +388,32 @@ mod tests {
             }
             _ => panic!("Expected ValidationError variant"),
         }
+    }
+
+    #[tokio::test]
+    async fn test_signup_handler_multiple_validation_errors_password_only_letters_email_invalid() {
+        // Arrange
+        let app_state = create_app_state_with_mock(|mock| {
+            mock.expect_add_user().never();
+        });
+
+        // Both email and password invalid
+        let signup_request = create_signup_request("user@email.x", "abcdefg", false);
+        let request = Json(signup_request);
+
+        // Act
+        let result = signup_handler(State(app_state), request).await;
+
+        // Assert
+        assert!(result.is_err());
+        let response = result.into_response();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+        let body = extract_json_body(response).await;
+        // Should have errors for both fields
+        assert!(body["errors"]["email"].is_array());
+        assert!(body["errors"]["password"].is_array());
+        assert_eq!(body["errors"]["email"][0], "Email must have a valid domain with TLD");
+        assert_eq!(body["errors"]["password"][0], "Password must be 8-32 characters, must contain at least letters and numbers");
     }
 }
