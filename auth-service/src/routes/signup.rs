@@ -30,7 +30,7 @@ pub async fn signup_handler(
 
     let mut user_store = app_state.user_store.write().await;
 
-    let result = user_store.add_user(user);
+    let result = user_store.add_user(user).await;
 
     if result.is_ok() {
         Ok(map_to_response(
@@ -45,12 +45,18 @@ pub async fn signup_handler(
 
 #[cfg(test)]
 mod tests {
+    use crate::domain::data_stores::MockUserStore;
     use super::*;
-    use crate::UserStoreType;
 
     #[tokio::test]
     async fn test_signup_handler() {
-        let user_store = UserStoreType::default();
+        //create mock and use it with the expectation
+        let mut mock_user_store = MockUserStore::new();
+        mock_user_store.expect_add_user().returning(|_| Ok(()));
+
+        let user_store = std::sync::Arc::new(tokio::sync::RwLock::new(
+           mock_user_store
+        ));
         let app_state = State(AppState { user_store });
 
         let signup_request = SignUpRequest::new(

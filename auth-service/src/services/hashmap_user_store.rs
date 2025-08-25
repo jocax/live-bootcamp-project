@@ -1,29 +1,14 @@
 use std::collections::HashMap;
-
+use std::fmt::{Debug, Formatter};
 use crate::domain::user::User;
+use crate::domain::data_stores::UserStore;
+pub(crate) use crate::domain::data_stores::UserStoreError;
 
-#[derive(Debug, PartialEq, Default)]
-pub enum UserStoreError {
-    UserAlreadyExists,
-    UserNotFound,
-    InvalidCredentials,
-    #[default]
-    UnexpectedError,
-}
-
-pub struct HashmapUserStore {
+pub struct HashMapUserStore {
     users: HashMap<String, User>,
 }
 
-impl Default for HashmapUserStore {
-    fn default() -> HashmapUserStore {
-        HashmapUserStore {
-            users: HashMap::new(),
-        }
-    }
-}
-
-impl HashmapUserStore {
+impl HashMapUserStore {
 
     pub fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
         if self.users.contains_key(&user.get_email()) {
@@ -49,6 +34,37 @@ impl HashmapUserStore {
     }
 }
 
+impl Default for HashMapUserStore {
+    fn default() -> Self {
+        HashMapUserStore {
+            users: HashMap::new(),
+        }
+    }
+}
+
+impl Debug for HashMapUserStore {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HashmapUserStore")
+            .field("users", &self.users.len())
+            .finish()
+    }
+}
+
+#[async_trait::async_trait]
+impl UserStore for HashMapUserStore {
+    async fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
+        self.add_user(user)
+    }
+
+    async fn get_user(&self, email: &str) -> Result<User, UserStoreError> {
+        self.get_user(email)
+    }
+
+    fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
+        self.validate_user(email, password)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -61,7 +77,7 @@ mod tests {
             String::from("myPassword"),
             false,
         );
-        let mut store = HashmapUserStore::default();
+        let mut store = HashMapUserStore::default();
         store.add_user(user.clone()).unwrap();
         assert_eq!(store.users.get(&user.get_email()), Some(&user));
     }
@@ -73,7 +89,7 @@ mod tests {
             String::from("myPassword"),
             false,
         );
-        let mut store = HashmapUserStore::default();
+        let mut store = HashMapUserStore::default();
         store.add_user(user.clone()).unwrap();
 
         //second add must throw an error
@@ -88,7 +104,7 @@ mod tests {
             String::from("myPassword"),
             false,
         );
-        let mut store = HashmapUserStore::default();
+        let mut store = HashMapUserStore::default();
         store.add_user(user.clone()).unwrap();
         assert_eq!(store.users.get(&user.get_email()), Some(&user));
 
@@ -98,7 +114,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_user_does_not_exist() {
-        let store = HashmapUserStore::default();
+        let store = HashMapUserStore::default();
 
         let result = store.get_user("user@example.com");
         assert!(result.is_err());
@@ -115,7 +131,7 @@ mod tests {
             String::from("myPassword"),
             false,
         );
-        let mut store = HashmapUserStore::default();
+        let mut store = HashMapUserStore::default();
         store.add_user(user.clone()).unwrap();
 
         let negative_error_result = store.validate_user("user@example.com", "otherPassword");

@@ -1,7 +1,7 @@
 pub mod api;
 mod routes;
-mod domain;
-mod services;
+pub mod domain;
+pub mod services;
 
 use std::env;
 use std::error::Error;
@@ -13,12 +13,12 @@ use axum::routing::{get, post};
 use axum_server::tls_rustls::RustlsConfig;
 use tokio::sync::RwLock;
 use tower_http::services::ServeDir;
+use crate::domain::data_stores::UserStore;
 use crate::routes::login::login_handler;
 use crate::routes::logout::logout_handler;
 use crate::routes::signup::signup_handler;
 use crate::routes::verify_2fa::verify_2fa_handler;
 use crate::routes::verify_token::verify_token_handler;
-use crate::services::hashmap_user_store::HashmapUserStore;
 
 // This struct encapsulates our application-related logic.
 pub struct Application {
@@ -127,7 +127,7 @@ fn create_router(app_state: AppState) -> Router {
 }
 
 // Using a type alias to improve readability!
-pub type UserStoreType = Arc<RwLock<HashmapUserStore>>;
+pub type UserStoreType = Arc<RwLock<dyn UserStore>>;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -135,7 +135,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(user_store: UserStoreType) -> Self {
-        Self { user_store }
-    }
+   pub fn new(user_store: UserStoreType) -> Self {
+       Self { user_store }
+   }
 }

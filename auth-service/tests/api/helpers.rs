@@ -1,3 +1,5 @@
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use auth_service::{AppState, Application, UserStoreType};
 use uuid::Uuid;
 use auth_service::api::login::LoginRequest;
@@ -5,6 +7,7 @@ use auth_service::api::logout::LogoutRequest;
 use auth_service::api::signup::SignUpRequest;
 use auth_service::api::verify_2fa::Verify2FARequest;
 use auth_service::api::verify_token::VerifyTokenRequest;
+use auth_service::services::HashMapUserStore;
 
 pub struct TestApp {
     pub address: String,
@@ -32,7 +35,8 @@ impl TestApp {
 impl TestApp {
     pub async fn new() -> Self {
 
-        let user_store = UserStoreType::default();
+        let user_store: UserStoreType = Arc::new(RwLock::new(HashMapUserStore::default()));
+
         let app_state = AppState::new(user_store);
         
         // Ensure TLS is disabled for tests

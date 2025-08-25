@@ -15,6 +15,11 @@ validator = { workspace = true }
 uuid = { workspace = true }
 argon2 = { workspace = true }
 password-hash = { workspace = true, features = ["rand_core", "std"] }
+async-trait = { workspace = true }
+
+# Support mocking of traits
+mockall = { workspace = true, optional = true }
 
 [dev-dependencies]
 reqwest = { workspace = true }
+mockall = { workspace = true }
