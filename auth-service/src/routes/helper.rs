@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use axum::http::{HeaderMap, StatusCode};
 use axum::Json;
 use axum::response::IntoResponse;
 use validator::{ValidationErrors};
-use crate::api::error::{AuthAPIError};
+use crate::api::error::{AuthAPIError, ValidationErrorResponse};
 use crate::services::hashmap_user_store::UserStoreError;
 
 pub fn map_to_response<T>(status_code: StatusCode, headers: Option<HeaderMap>, data: T) -> impl IntoResponse
@@ -22,11 +23,32 @@ pub fn map_user_store_error_to_response(error: UserStoreError) -> AuthAPIError {
     auth_api_error
 }
 
+// Improved validation error mapping function
 pub fn map_validation_errors_to_response(errors: ValidationErrors) -> AuthAPIError {
-    let auth_api_error = match errors {
-        _ => AuthAPIError::InvalidFormat,
-    };
-    auth_api_error
+    let mut error_map: HashMap<String, Vec<String>> = HashMap::new();
+
+    for (field_name, field_errors) in errors.field_errors() {
+        let messages: Vec<String> = field_errors
+            .iter()
+            .map(|error| {
+                error.message
+                    .as_ref()
+                    .map(|msg| msg.to_string())
+                    .unwrap_or_else(|| {
+                        // Generate a default message based on the error code
+                        match error.code.as_ref() {
+                            "email" => "Invalid email format".to_string(),
+                            "length" => "Invalid length".to_string(),
+                            _ => format!("Invalid {}", field_name),
+                        }
+                    })
+            })
+            .collect();
+
+        error_map.insert(field_name.to_string(), messages);
+    }
+
+    AuthAPIError::ValidationError(ValidationErrorResponse::new(error_map))
 }
 
 #[cfg(test)]

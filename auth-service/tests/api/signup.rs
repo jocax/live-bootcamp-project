@@ -1,4 +1,4 @@
-use auth_service::api::error::ErrorResponse;
+use auth_service::api::error::{ErrorResponse, ValidationErrorResponse};
 use auth_service::api::signup::SignUpRequest;
 use crate::api::TestApp;
 
@@ -45,39 +45,6 @@ async fn should_return_422_if_malformed_input_json() {
 }
 
 #[tokio::test]
-async fn should_return_400_if_malformed_input_entity() {
-    let app = TestApp::new().await;
-
-    let test_cases = [
-        SignUpRequest::new("user@example@".to_string(), "password123".to_string(), false),
-        SignUpRequest::new("bad_email_format".to_string(), "password123".to_string(), false),
-        SignUpRequest::new("user@example.com".to_string(), "1234567".to_string(), false),
-        SignUpRequest::new("user@example.com".to_string(), "".to_string(), false)
-    ];
-
-    for test_case in test_cases.iter() {
-        let response = app.post_signup(&test_case).await;
-        assert_eq!(response.status().as_u16(), 400, "Failed for input: {:?}", test_case);
-
-        assert_eq!(
-            response.status().as_u16(),
-            400,
-            "Failed for input: {:?}",
-            test_case
-        );
-
-        assert_eq!(
-            response.json::<ErrorResponse>()
-                .await
-                .expect("Could not deserialize response body to ErrorResponse")
-                .get_error(),
-            "Invalid format"
-        )
-    }
-
-}
-
-#[tokio::test]
 async fn should_return_409_if_email_already_exists() {
 
     let app = TestApp::new().await;
@@ -110,4 +77,39 @@ async fn should_return_409_if_email_already_exists() {
         "User already exists"
     )
 
+}
+
+#[tokio::test]
+async fn should_return_400_if_malformed_input_entity() {
+    let app = TestApp::new().await;
+
+    let test_cases = [
+        SignUpRequest::new("user@example@".to_string(), "password123".to_string(), false),
+        SignUpRequest::new("bad_email_format".to_string(), "password123".to_string(), false),
+        SignUpRequest::new("user@example.com".to_string(), "1234567".to_string(), false),
+        SignUpRequest::new("user@example.com".to_string(), "".to_string(), false)
+    ];
+
+    for test_case in test_cases.iter() {
+        let response = app.post_signup(&test_case).await;
+
+        assert_eq!(
+            response.status().as_u16(),
+            400,
+            "Expected 400 status for input: {:?}",
+            test_case
+        );
+
+        let error_response = response
+            .json::<ValidationErrorResponse>()
+            .await
+            .expect("Could not deserialize response body to ValidationErrorResponse");
+
+        // Just ensure there are some validation errors
+        assert!(
+            !error_response.get_errors().is_empty(),
+            "Expected validation errors for input: {:?}",
+            test_case
+        );
+    }
 }
