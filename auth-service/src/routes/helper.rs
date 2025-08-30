@@ -88,11 +88,38 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_build_error_response() {
+    async fn test_conflict_error_response() {
 
         let response = map_user_store_error_to_response(UserStoreError::UserAlreadyExists).into_response();
         assert!(response.status().is_client_error());
         assert_eq!(response.status(), StatusCode::CONFLICT);
+
+    }
+
+    #[tokio::test]
+    async fn test_server_error_response() {
+
+        let response = map_user_store_error_to_response(UserStoreError::UnexpectedError).into_response();
+        assert!(response.status().is_server_error());
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+    }
+
+    #[tokio::test]
+    async fn test_authentication_error_response() {
+
+        let response = map_user_store_error_to_response(UserStoreError::InvalidCredentials).into_response();
+        assert!(response.status().is_client_error());
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    }
+
+    #[tokio::test]
+    async fn test_not_found_error_response() {
+
+        let response = map_user_store_error_to_response(UserStoreError::UserNotFound).into_response();
+        assert!(response.status().is_client_error());
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
     }
 

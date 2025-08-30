@@ -416,4 +416,25 @@ mod tests {
         assert_eq!(body["errors"]["email"][0], "Email must have a valid domain with TLD");
         assert_eq!(body["errors"]["password"][0], "Password must be 8-32 characters, must contain at least letters and numbers");
     }
+
+    #[tokio::test]
+    async fn test_signup_handler_unexpected_error_from_database_for_500_response() {
+        // Arrange
+        let app_state = create_app_state_with_mock(|mock| {
+            mock.expect_add_user()
+                .returning(|_| Err(UserStoreError::UnexpectedError));
+        });
+
+        let signup_request = create_signup_request("user@example.com", "password123", false);
+        let request = Json(signup_request);
+
+        // Act
+        let result = signup_handler(State(app_state), request).await;
+
+        // Assert
+        assert!(result.is_err());
+        let response = result.into_response();
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
 }
