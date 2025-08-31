@@ -1,9 +1,10 @@
 use auth_service::api::logout::LogoutRequest;
-use crate::api::TestApp;
+use crate::api::{helpers, TestApp};
 
 #[tokio::test]
 async fn test_logout() {
-    let app = TestApp::new().await;
+    let user_store_type = helpers::create_user_store_type();
+    let app = TestApp::new(user_store_type).await;
 
     let logout_request = LogoutRequest::new(
         "my-token".to_string(),

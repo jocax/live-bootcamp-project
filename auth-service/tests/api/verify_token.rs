@@ -1,9 +1,10 @@
 use auth_service::api::verify_token::VerifyTokenRequest;
-use crate::api::TestApp;
+use crate::api::{helpers, TestApp};
 
 #[tokio::test]
 async fn test_verify_token() {
-    let app = TestApp::new().await;
+    let user_store_type = helpers::create_user_store_type();
+    let app = TestApp::new(user_store_type).await;
 
     let verify_token_request = VerifyTokenRequest::new(
         "my-verify-token".to_string(),

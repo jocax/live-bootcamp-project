@@ -4,6 +4,8 @@ use axum::Json;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use axum::http::header::CONTENT_TYPE;
+
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug)]
 pub struct ErrorResponse {
@@ -35,6 +37,7 @@ impl ValidationErrorResponse {
     }
 }
 
+#[derive(Debug)]
 pub enum AuthAPIError {
     UserAlreadyExists,
     InvalidCredentials,
@@ -47,38 +50,38 @@ pub enum AuthAPIError {
 impl IntoResponse for AuthAPIError {
     fn into_response(self) -> Response {
         match self {
-            AuthAPIError::UserAlreadyExists => {
+           AuthAPIError::UserAlreadyExists => {
                 let body = Json(ErrorResponse {
                     error: "User already exists".to_string(),
                 });
-                (StatusCode::CONFLICT, body).into_response()
+                (StatusCode::CONFLICT, [ (CONTENT_TYPE, "application/json") ], body).into_response()
             }
             AuthAPIError::InvalidCredentials => {
                 let body = Json(ErrorResponse {
                     error: "Invalid credentials".to_string(),
                 });
-                (StatusCode::BAD_REQUEST, body).into_response()
+                (StatusCode::UNAUTHORIZED, [ (CONTENT_TYPE, "application/json") ],  body).into_response()
             }
             AuthAPIError::InvalidFormat => {
                 let body = Json(ErrorResponse {
                     error: "Invalid format".to_string(),
                 });
-                (StatusCode::BAD_REQUEST, body).into_response()
+                (StatusCode::BAD_REQUEST, [ (CONTENT_TYPE, "application/json") ],  body).into_response()
             }
             AuthAPIError::ValidationError(validation_response) => {
-                (StatusCode::BAD_REQUEST, Json(validation_response)).into_response()
+                (StatusCode::UNPROCESSABLE_ENTITY, [ (CONTENT_TYPE, "application/json") ],  Json(validation_response)).into_response()
             }
             AuthAPIError::UserNotFound => {
                 let body = Json(ErrorResponse {
                     error: "User not found".to_string(),
                 });
-                (StatusCode::NOT_FOUND, body).into_response()
+                (StatusCode::NOT_FOUND, [ (CONTENT_TYPE, "application/json") ],  body).into_response()
             }
             AuthAPIError::UnexpectedError => {
                 let body = Json(ErrorResponse {
                     error: "Unexpected error".to_string(),
                 });
-                (StatusCode::INTERNAL_SERVER_ERROR, body).into_response()
+                (StatusCode::INTERNAL_SERVER_ERROR, [ (CONTENT_TYPE, "application/json") ],  body).into_response()
             }
         }
     }

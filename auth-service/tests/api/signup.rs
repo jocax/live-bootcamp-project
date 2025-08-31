@@ -1,10 +1,12 @@
 use auth_service::api::error::{ErrorResponse, ValidationErrorResponse};
 use auth_service::api::signup::SignUpRequest;
-use crate::api::TestApp;
+use crate::api::{helpers, TestApp};
 
 #[tokio::test]
 async fn signup_should_return_201() {
-    let app = TestApp::new().await;
+
+    let user_store_type = helpers::create_user_store_type();
+    let app = TestApp::new(user_store_type).await;
 
     let signup_request = SignUpRequest::new(
         "test@example.com".to_string(),
@@ -22,7 +24,9 @@ async fn signup_should_return_201() {
 
 #[tokio::test]
 async fn should_return_422_if_malformed_input_json() {
-    let app = TestApp::new().await;
+
+    let user_store_type = helpers::create_user_store_type();
+    let app = TestApp::new(user_store_type).await;
 
     let random_email = TestApp::get_random_email().await;
 
@@ -47,7 +51,8 @@ async fn should_return_422_if_malformed_input_json() {
 #[tokio::test]
 async fn should_return_409_if_email_already_exists() {
 
-    let app = TestApp::new().await;
+    let user_store_type = helpers::create_user_store_type();
+    let app = TestApp::new(user_store_type).await;
 
     let signup_request = SignUpRequest::new(
         "test@example.com".to_string(),
@@ -81,7 +86,9 @@ async fn should_return_409_if_email_already_exists() {
 
 #[tokio::test]
 async fn should_return_400_if_malformed_input_entity() {
-    let app = TestApp::new().await;
+
+    let user_store_type = helpers::create_user_store_type();
+    let app = TestApp::new(user_store_type).await;
 
     let test_cases = [
         SignUpRequest::new("user@example@".to_string(), "password123".to_string(), false),
@@ -95,7 +102,7 @@ async fn should_return_400_if_malformed_input_entity() {
 
         assert_eq!(
             response.status().as_u16(),
-            400,
+            422,
             "Expected 400 status for input: {:?}",
             test_case
         );

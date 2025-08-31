@@ -1,12 +1,13 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use auth_service::{AppState, Application, UserStoreType};
-use uuid::Uuid;
 use auth_service::api::login::LoginRequest;
 use auth_service::api::logout::LogoutRequest;
 use auth_service::api::signup::SignUpRequest;
 use auth_service::api::verify_2fa::Verify2FARequest;
 use auth_service::api::verify_token::VerifyTokenRequest;
+use auth_service::{AppState, Application, UserStoreType};
+use uuid::Uuid;
+use auth_service::domain::data_stores::UserStore;
 use auth_service::services::HashMapUserStore;
 
 pub struct TestApp {
@@ -33,16 +34,16 @@ impl TestApp {
 }
 
 impl TestApp {
-    pub async fn new() -> Self {
+    pub async fn new(user_store: UserStoreType) -> Self {
 
-        let user_store: UserStoreType = Arc::new(RwLock::new(HashMapUserStore::default()));
+        // let user_store: UserStoreType = user_store_type.unwrap_or_else(|| Arc::new(RwLock::new(HashMapUserStore::default())));
 
         let app_state = AppState::new(user_store);
-        
+
         // Ensure TLS is disabled for tests
         std::env::set_var("TLS_ENABLED", "false");
 
-        let app = Application::build(app_state,"127.0.0.1:0")
+        let app = Application::build(app_state, "127.0.0.1:0")
             .await
             .expect("Failed to build app");
 
@@ -79,7 +80,7 @@ impl TestApp {
     }
     pub async fn post_signup(&self, signup: &SignUpRequest) -> reqwest::Response {
         let url = self.api_url("/signup");
-        println!("POST {}",&url);
+        println!("POST {}", &url);
         self.http_client
             .post(url)
             .json(&signup)
@@ -100,13 +101,22 @@ impl TestApp {
             .expect("Failed to execute signup request.")
     }
 
-
     pub async fn post_login(&self, login_request: &LoginRequest) -> reqwest::Response {
         let url = self.api_url("/login");
         println!("POST {}", &url);
         self.http_client
             .post(&url)
             .json(&login_request)
+            .send()
+            .await
+            .expect("Failed to execute login request.")
+    }
+    pub async fn post_login_any_body<Body: serde::Serialize>(&self, body: &Body) -> reqwest::Response {
+        let url = self.api_url("/login");
+        println!("POST {}", &url);
+        self.http_client
+            .post(&url)
+            .json(&body)
             .send()
             .await
             .expect("Failed to execute login request.")
@@ -147,5 +157,8 @@ impl TestApp {
             .await
             .expect("Failed to execute verify-token request.")
     }
+}
 
+pub fn create_user_store_type() -> Arc<RwLock<dyn UserStore>> {
+    Arc::new(RwLock::new(HashMapUserStore::default()))
 }

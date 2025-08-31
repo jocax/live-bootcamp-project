@@ -1,7 +1,10 @@
 use std::collections::HashMap;
+use std::future::Future;
+use axum::extract::{FromRequest, Request};
 use axum::http::{HeaderMap, StatusCode};
 use axum::Json;
 use axum::response::IntoResponse;
+use serde::de::DeserializeOwned;
 use validator::{ValidationErrors};
 use crate::api::error::{AuthAPIError, ValidationErrorResponse};
 use crate::services::hashmap_user_store::UserStoreError;
@@ -49,6 +52,32 @@ pub fn map_validation_errors_to_response(errors: ValidationErrors) -> AuthAPIErr
     }
 
     AuthAPIError::ValidationError(ValidationErrorResponse::new(error_map))
+}
+
+pub struct ValidatedJson<T>(pub T);
+
+impl<S, T> FromRequest<S> for ValidatedJson<T>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = AuthAPIError;
+
+    fn from_request(req: Request, state: &S) -> impl Future<Output = Result<Self, Self::Rejection>> + Send {
+        async move {
+            match Json::<T>::from_request(req, state).await {
+                Ok(Json(value)) => Ok(ValidatedJson(value)),
+                Err(_rejection) => {
+                    let error_message = "Invalid JSON format".to_string();
+                    let error_details = vec![error_message];
+                    let mut errors = std::collections::HashMap::new();
+                    errors.insert("json".to_string(), error_details);
+
+                    Err(AuthAPIError::ValidationError(ValidationErrorResponse::new(errors)))
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -110,7 +139,7 @@ mod tests {
 
         let response = map_user_store_error_to_response(UserStoreError::InvalidCredentials).into_response();
         assert!(response.status().is_client_error());
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 
     }
 

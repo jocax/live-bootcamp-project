@@ -1,13 +1,26 @@
+use serde_json::{json};
 use auth_service::api::login::LoginRequest;
-use crate::api::TestApp;
+use auth_service::domain::types::{Email, Password};
+use auth_service::domain::user::User;
+use crate::api::{helpers, TestApp};
 
 #[tokio::test]
 async fn test_login() {
-    let app = TestApp::new().await;
+
+    let user_store_type = helpers::create_user_store_type();
+
+    let password_value = String::from("password123");
+    let email = Email::try_from("test@example.com".to_string()).unwrap();
+    let password = Password::try_from(password_value.clone()).unwrap();
+
+    let user = User::new(email.clone(), password, false);
+
+    user_store_type.write().await.add_user(user.clone()).await.expect("Failed to add user");
+    let app = TestApp::new(user_store_type).await;
 
     let login_request = LoginRequest::new(
-        "test@example.com".to_string(),
-        "password123".to_string()
+       email,
+        password_value
     );
 
     let response = app.post_login(&login_request).await;
@@ -35,4 +48,45 @@ async fn test_login() {
     assert!(cookie_str.contains("Path=/"));
     assert!(cookie_str.contains("jwt=myToken"));
     assert!(cookie_str.contains("SameSite=Lax"));
+}
+
+#[tokio::test]
+async fn should_return_422_if_malformed_credentials() {
+
+    let user_store_type = helpers::create_user_store_type();
+    let app = TestApp::new(user_store_type).await;
+
+    let unkown_request_body = json!({
+        "field_name": "field_value"
+    });
+
+    let response = app.post_login_any_body(&unkown_request_body).await;
+    assert_eq!(response.status().as_u16(), 422);
+    assert_eq!(response.headers().get("content-type").unwrap(), "application/json");
+
+}
+
+#[tokio::test]
+async fn should_return_401_if_incorrect_credentials() {
+
+    let user_store_type = helpers::create_user_store_type();
+
+    let password_value = String::from("password123");
+    let email = Email::try_from("test@example.com".to_string()).unwrap();
+    let password = Password::try_from(password_value.clone()).unwrap();
+
+    let user = User::new(email.clone(), password, false);
+
+    user_store_type.write().await.add_user(user.clone()).await.expect("Failed to add user");
+    let app = TestApp::new(user_store_type).await;
+
+    let login_request = LoginRequest::new(
+        email,
+        "wrong_passsword_123".to_string()
+    );
+
+    let response = app.post_login(&login_request).await;
+    assert_eq!(response.status().as_u16(), 401);
+    assert_eq!(response.headers().get("content-type").unwrap(), "application/json");
+    
 }

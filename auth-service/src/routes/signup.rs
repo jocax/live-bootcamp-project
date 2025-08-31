@@ -121,7 +121,7 @@ mod tests {
         // Assert
         assert!(result.is_err());
         let response = result.into_response();
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
         // Verify error message
         let body = extract_json_body(response).await;
@@ -145,7 +145,7 @@ mod tests {
         // Assert
         assert!(result.is_err());
         let response = result.into_response();
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
         let body = extract_json_body(response).await;
         assert!(body["errors"]["email"].is_array());
@@ -168,7 +168,7 @@ mod tests {
         // Assert
         assert!(result.is_err());
         let response = result.into_response();
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
         let body = extract_json_body(response).await;
         assert!(body["errors"]["password"].is_array());
@@ -192,7 +192,7 @@ mod tests {
         // Assert
         assert!(result.is_err());
         let response = result.into_response();
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
         let body = extract_json_body(response).await;
         assert!(body["errors"]["password"].is_array());
@@ -216,7 +216,7 @@ mod tests {
         // Assert
         assert!(result.is_err());
         let response = result.into_response();
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
         let body = extract_json_body(response).await;
         // Should have errors for both fields
@@ -315,7 +315,7 @@ mod tests {
             assert!(result.is_err(), "Should have failed for email: {}", email);
 
             let response = result.into_response();
-            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+            assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
         }
     }
 
@@ -407,7 +407,7 @@ mod tests {
         // Assert
         assert!(result.is_err());
         let response = result.into_response();
-        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
         let body = extract_json_body(response).await;
         // Should have errors for both fields

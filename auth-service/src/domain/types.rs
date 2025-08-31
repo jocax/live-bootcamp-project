@@ -42,6 +42,12 @@ impl TryFrom<&str> for Email {
     }
 }
 
+impl Into<String> for Email  {
+    fn into(self) -> String {
+        self.value
+    }   
+}
+
 #[derive(Serialize, Deserialize, Derivative, Validate, Clone, PartialEq, Eq)]
 pub struct Password {
     #[validate(
