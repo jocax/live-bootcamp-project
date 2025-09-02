@@ -44,6 +44,7 @@ jobs:
       env:
         TLS_ENABLED: false
       run: |
+        export JWT_SECRET=secret
         cargo build --verbose
         cargo test --verbose
 
@@ -120,6 +121,9 @@ jobs:
         username: deploy
         key: ${{ secrets.QIPIO_DEPLOY_KEY }}
         script: |
+          # Export the secret stored in github secrets 
+          export JWT_SECRET=${{ secrets.JWT_SECRET }}
+          
           # Navigate to application directory
           cd /home/deploy/live-bootcamp
           

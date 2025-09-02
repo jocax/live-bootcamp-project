@@ -2,13 +2,28 @@ use argon2::Argon2;
 use derivative::Derivative;
 use password_hash::rand_core::OsRng;
 use password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use validator::{Validate, ValidationErrors};
 use crate::validations::email::{validate_email_default};
 use crate::validations::password::{validate_password_default};
 
-#[derive(Serialize, Deserialize, Derivative, Validate, Clone, Eq, PartialEq, Hash)]
+#[derive(Serialize, Derivative, Validate, Clone, Eq, PartialEq, Hash)]
 #[derivative(Debug)]
+/*
+Make Email serialize as just a string:
+
+NOT working for login request
+{
+  "email": {"value": "test@example.com"},
+  "password": "wrong_password_1234"
+}
+IS working
+{
+  "email": "test@example.com",
+  "password": "wrong_password_1234"
+}
+ */
+#[serde(transparent)] //Make Email serialize as just a string
 pub struct Email {
     #[validate(
         custom(function = "validate_email_default", message = "Email must have a valid domain with TLD")
@@ -45,8 +60,23 @@ impl TryFrom<&str> for Email {
 impl Into<String> for Email  {
     fn into(self) -> String {
         self.value
-    }   
+    }
 }
+
+
+impl<'de> Deserialize<'de> for Email {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+
+        // Use TryFrom which includes validation
+        Email::try_from(value)
+            .map_err(|e| serde::de::Error::custom(e.to_string()))
+    }
+}
+
 
 #[derive(Serialize, Deserialize, Derivative, Validate, Clone, PartialEq, Eq)]
 pub struct Password {

@@ -12,7 +12,7 @@ pub struct LoginRequest {
 }
 
 impl LoginRequest {
-    pub fn new(email: Email, password:String) -> Self {
+    pub fn new(email: Email, password: String) -> Self {
         Self { email,  password }
     }
 
@@ -20,19 +20,17 @@ impl LoginRequest {
         &self.email
     }
 
-    pub fn get_password(&self) -> &str {
+    pub fn get_password(&self) -> &String {
         &self.password
     }
 }
 
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug)]
-pub struct LoginResponse {
-}
+pub struct LoginResponse {}
 
 impl LoginResponse {
     pub fn new() -> Self {
-        Self {
-        }
+        Self {}
     }
 }

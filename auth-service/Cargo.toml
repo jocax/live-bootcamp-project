@@ -1,6 +1,12 @@
 [package]
 name = "auth-service"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
 
 [dependencies]
 axum = { workspace = true }
@@ -16,15 +22,21 @@ uuid = { workspace = true }
 argon2 = { workspace = true }
 password-hash = { workspace = true, features = ["rand_core", "std"] }
 async-trait = { workspace = true }
-
 # Validate email address
-email_address = { workspace = true}
+email_address = { workspace = true }
 # Support mocking of traits
 mockall = { workspace = true, optional = true }
+# Token Sprint 3 - task 2
+jsonwebtoken.workspace = true
+chrono.workspace = true
+dotenvy.workspace = true
+tracing.workspace = true
+lazy_static.workspace = true
 
 [dev-dependencies]
-reqwest = { workspace = true }
-mockall = { workspace = true }
-fake = { workspace = true}
-quickcheck = { workspace = true}
-quickcheck_macros = { workspace = true}
+reqwest = { workspace = true, default-features = false }
+mockall.workspace = true
+fake.workspace = true
+quickcheck.workspace = true
+quickcheck_macros.workspace = true
+serial_test.workspace = true

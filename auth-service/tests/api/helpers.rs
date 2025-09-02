@@ -1,4 +1,9 @@
+use std::collections::HashMap;
+use std::fmt::Display;
 use std::sync::Arc;
+use axum_extra::extract::cookie::Cookie;
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use auth_service::api::login::LoginRequest;
 use auth_service::api::logout::LogoutRequest;
@@ -161,4 +166,40 @@ impl TestApp {
 
 pub fn create_user_store_type() -> Arc<RwLock<dyn UserStore>> {
     Arc::new(RwLock::new(HashMapUserStore::default()))
+}
+
+pub fn get_cookies(response: &'_ reqwest::Response) -> HashMap<String, Cookie<'_>> {
+    let mut cookies: HashMap<String, Cookie> = HashMap::new();
+    for cookie_header in response.headers().get_all("set-cookie") {
+                let cookie_str = cookie_header.to_str().unwrap();
+        let cookie = Cookie::parse(cookie_str);
+        if let Ok(cookie) = cookie {
+            cookies.insert(cookie.name().to_string(), cookie);
+        }
+    }
+    cookies
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    pub sub: String,  // subject (email in your case)
+    pub exp: i64,     // expiration time
+}
+
+impl Display for Claims {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+pub fn decode_jwt(token: &str, secret: &[u8]) -> Result<Claims, jsonwebtoken::errors::Error> {
+    let validation = Validation::new(Algorithm::HS256);
+
+    let token_data = decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(secret),
+        &validation
+    )?;
+
+    Ok(token_data.claims)
 }

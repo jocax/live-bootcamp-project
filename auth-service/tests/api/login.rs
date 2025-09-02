@@ -1,8 +1,35 @@
+use serde::Serialize;
 use serde_json::{json};
 use auth_service::api::login::LoginRequest;
 use auth_service::domain::types::{Email, Password};
 use auth_service::domain::user::User;
+use auth_service::utils;
+use auth_service::utils::constants::JWT_SECRET;
 use crate::api::{helpers, TestApp};
+
+#[test]
+fn test_serialization() {
+    #[derive(Serialize, Debug)]
+    struct SimpleLogin {
+        email: String,
+        password: String,
+    }
+
+    let simple = SimpleLogin {
+        email: "test@example.com".to_string(),
+        password: "wrong_password_1234".to_string(),
+    };
+
+    let json = serde_json::to_string(&simple).unwrap();
+    println!("Simple struct JSON: {}", json);
+    // Should print: {"email":"test@example.com","password":"wrong_password_1234"}
+
+    // Now test your actual struct
+    let email = Email::try_from("test@example.com").unwrap();
+    let login_request = LoginRequest::new(email, "wrong_password_1234".to_string());
+    let json2 = serde_json::to_string(&login_request).unwrap();
+    println!("LoginRequest JSON: {}", json2);
+}
 
 #[tokio::test]
 async fn test_login() {
@@ -20,8 +47,15 @@ async fn test_login() {
 
     let login_request = LoginRequest::new(
        email,
-        password_value
+       password_value
     );
+
+    // Debug what serde_json produces
+    let json_string = serde_json::to_string(&login_request).unwrap();
+    println!("JSON being sent: {}", json_string);
+
+    // Also check the struct itself
+    println!("Password in struct: '{}'", login_request.get_password());
 
     let response = app.post_login(&login_request).await;
     assert_eq!(response.status().as_u16(), 200);
@@ -46,7 +80,7 @@ async fn test_login() {
     let cookie_str = jwt_cookie.to_str().unwrap();
     assert!(cookie_str.contains("HttpOnly"));
     assert!(cookie_str.contains("Path=/"));
-    assert!(cookie_str.contains("jwt=myToken"));
+    assert!(cookie_str.starts_with("jwt="));
     assert!(cookie_str.contains("SameSite=Lax"));
 }
 
@@ -80,13 +114,47 @@ async fn should_return_401_if_incorrect_credentials() {
     user_store_type.write().await.add_user(user.clone()).await.expect("Failed to add user");
     let app = TestApp::new(user_store_type).await;
 
-    let login_request = LoginRequest::new(
-        email,
-        "wrong_passsword_123".to_string()
-    );
+    let login_request = LoginRequest::new(email,"wrong_password_1234".to_string());
 
     let response = app.post_login(&login_request).await;
     assert_eq!(response.status().as_u16(), 401);
     assert_eq!(response.headers().get("content-type").unwrap(), "application/json");
-    
+
+}
+
+#[tokio::test]
+async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
+
+    let user_store_type = helpers::create_user_store_type();
+
+    let password_value = String::from("password123");
+    let email = Email::try_from("test@example.com".to_string()).unwrap();
+    let password = Password::try_from(password_value.clone()).unwrap();
+
+    let user = User::new(email.clone(), password, false);
+
+    user_store_type.write().await.add_user(user.clone()).await.expect("Failed to add user");
+    let app = TestApp::new(user_store_type).await;
+
+    let random_email = Email::try_from("test@example.com".to_string()).unwrap();
+
+    let login_body = LoginRequest::new(
+        random_email,
+        password_value
+    );
+    let response = app.post_login(&login_body.into()).await;
+
+    assert_eq!(response.status().as_u16(), 200);
+
+    let cookies = helpers::get_cookies(&response);
+
+    let auth_cookie = cookies.get(utils::constants::JWT_COOKIE_NAME)
+        .expect("No auth cookie found");
+
+    assert!(!auth_cookie.value().is_empty());
+
+    let claims = helpers::decode_jwt(&auth_cookie.value_trimmed(), JWT_SECRET.as_bytes()).unwrap();
+    println!("{:?}", claims);
+
+    assert_eq!(claims.sub, "test@example.com");
 }

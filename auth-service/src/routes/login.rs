@@ -1,17 +1,19 @@
 use crate::api::error::AuthAPIError;
 use crate::api::login::{LoginRequest, LoginResponse};
-use crate::routes::helper;
 use crate::routes::helper::{map_validation_errors_to_response, ValidatedJson};
-use crate::AppState;
+use crate::{utils, AppState};
 use axum::extract::State;
-use axum::http::header::{CONTENT_TYPE, SET_COOKIE};
+use axum::http::header::{CONTENT_TYPE};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
+use axum_extra::extract::CookieJar;
+use tracing::{warn};
 use validator::Validate;
 
 pub async fn login_handler(
     State(app_state): State<AppState>,
+    cookie_jar: CookieJar,
     ValidatedJson(request): ValidatedJson<LoginRequest>,
 ) -> Result<impl IntoResponse, AuthAPIError> {
     // Validate the request
@@ -33,21 +35,34 @@ pub async fn login_handler(
         .await
         .validate_user(email, password.as_ref());
 
-    if password_validation_result.is_err() {
-        let error = password_validation_result.unwrap_err();
-        Err(helper::map_user_store_error_to_response(error))
-    } else {
-        let mut headers = HeaderMap::new();
-        headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
-        headers.insert(
-            SET_COOKIE,
-            "jwt=myToken; Path=/; HttpOnly; SameSite=Lax"
-                .parse()
-                .unwrap(),
-        );
+    let password_validation = match password_validation_result {
+        Ok(_) => true,
+        Err(_) => false,
+    };
 
-        Ok((StatusCode::OK, headers, Json(LoginResponse::new())))
+    if !password_validation {
+        return Err(AuthAPIError::InvalidCredentials);
     }
+
+    let auth_cookie = match utils::auth::generate_auth_cookie(email) {
+        Ok(cookie) => cookie,
+        Err(error) => {
+            warn!("Error generating auth cookie: {:?}", error);
+            return Err(AuthAPIError::UnexpectedError);
+        }
+    };
+
+    let updated_cookie_jar = cookie_jar.add(auth_cookie);
+
+    let mut headers = HeaderMap::new();
+    headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
+
+    Ok((
+        StatusCode::OK,
+        headers,
+        updated_cookie_jar,
+        Json(LoginResponse::new()),
+    ))
 }
 
 #[cfg(test)]
@@ -57,7 +72,8 @@ mod tests {
     use crate::domain::data_stores::MockUserStore;
     use axum::body::to_bytes;
     use axum::response::Response;
-    use serde_json::{json, Value};
+    use reqwest::header::SET_COOKIE;
+    use serde_json::{Value};
 
     // Helper function to create app state with mock user store
     fn create_app_state_with_mock<F>(setup: F) -> AppState
@@ -89,31 +105,44 @@ mod tests {
     #[tokio::test]
     async fn test_login_handler() {
         // Arrange
+        let _app_state = create_app_state_with_mock(|mock| {
+            mock.expect_validate_user().returning(|_, _| Ok(()));
+        });
+
+        // Arrange
         let app_state = create_app_state_with_mock(|mock| {
             mock.expect_validate_user().returning(|_, _| Ok(()));
         });
 
         let login_request = create_login_request("user@example.com", "password123");
-        let request = ValidatedJson(login_request); // Changed from Json to ValidatedJson
+        let request = ValidatedJson(login_request);
 
-        let response = login_handler(State(app_state), request)
+        let cookie_jar = CookieJar::new();
+        let response = login_handler(State(app_state), cookie_jar, request)
             .await
             .unwrap()
             .into_response();
+
         assert!(response.status().is_success());
 
         let response_headers = response.headers();
         assert!(response_headers.contains_key(SET_COOKIE));
-        assert_eq!(
-            response_headers.get(SET_COOKIE).unwrap(),
-            "jwt=myToken; Path=/; HttpOnly; SameSite=Lax"
-        );
-        assert_eq!(
-            response_headers.get(CONTENT_TYPE).unwrap(),
-            "application/json"
-        );
 
-        let expected_body = extract_json_body(response).await;
-        assert_eq!(expected_body, json!({}))
+        // Parse the Set-Cookie header
+        let cookie_header = response_headers.get(SET_COOKIE).unwrap().to_str().unwrap();
+
+        // Verify cookie attributes
+        assert!(cookie_header.starts_with("jwt="));
+        assert!(cookie_header.contains("; HttpOnly"));
+        assert!(cookie_header.contains("; SameSite=Lax"));
+        assert!(cookie_header.contains("; Path=/"));
+
+        // Extract and validate the JWT token
+        let token_part = cookie_header.split(';').next().unwrap();
+        let token = token_part.strip_prefix("jwt=").unwrap();
+
+        // Validate JWT structure (3 parts separated by dots)
+        let parts: Vec<&str> = token.split('.').collect();
+        assert_eq!(parts.len(), 3, "JWT should have 3 parts");
     }
 }

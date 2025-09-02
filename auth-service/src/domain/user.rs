@@ -61,7 +61,7 @@ mod tests {
         assert!(serialized.ends_with("}"));
 
         // Check contains expected fields
-        assert!(serialized.contains("\"value\":\"my@email.de\""));
+        assert!(serialized.contains("\"email\":\"my@email.de"));
         assert!(serialized.contains("\"requires_2fa\":false"));
         assert!(serialized.contains("\"value\":\"$argon2id$"));
 

@@ -30,11 +30,17 @@ argon2 = { version = "0.5" }
 password-hash = { version = "0.5" }
 async-trait = { version = "0.1" }
 email_address = { version = "0.2" }
+jsonwebtoken = { version = "9" }
+chrono = { version = "0.4" }
+dotenvy = { version = "0.15" }
+lazy_static = { version = "1"}
+tracing = "0.1"
 
 # Libs for testing
 reqwest = { version = "0.12", default-features = false, features = ["json"] }
 mockall = { version = "0.13" }
-fake = { version = "4.4" , features = ["derive"] }
+fake = { version = "4.4", features = ["derive"] }
 rand = { version = "0.9" }
-quickcheck = { version = "1"}
-quickcheck_macros = { version = "1"}
+quickcheck = { version = "1" }
+quickcheck_macros = { version = "1" }
+serial_test = {version = "3" }
