@@ -18,5 +18,5 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/auth-service /usr/local/bin
 # Copy from builder stage, not from local filesystem
-COPY --from=builder /app/auth-service/assets /app/assets
+COPY --from=builder /app/auth-service/assets  /app/auth-service/assets
 ENTRYPOINT ["/usr/local/bin/auth-service"]

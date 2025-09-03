@@ -32,9 +32,10 @@ chrono.workspace = true
 dotenvy.workspace = true
 tracing.workspace = true
 lazy_static.workspace = true
+askama = { workspace = true }
 
 [dev-dependencies]
-reqwest = { workspace = true, default-features = false }
+reqwest = { workspace = true, default-features = false, features = ["cookies"] }
 mockall.workspace = true
 fake.workspace = true
 quickcheck.workspace = true

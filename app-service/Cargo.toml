@@ -5,7 +5,7 @@ edition = "2021"
 [dependencies]
 axum = { workspace = true }
 axum-extra = { workspace = true, features = ["cookie"] }
-tower-http = { workspace = true, features = ["fs"] }
+tower-http = { workspace = true, features = ["fs", "trace"], version = "1.0.0" }
 axum-server = { workspace = true }
 tokio = { workspace = true }
 reqwest = { workspace = true }

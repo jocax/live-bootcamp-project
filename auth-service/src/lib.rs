@@ -1,26 +1,30 @@
-pub mod validations;
 pub mod api;
-mod routes;
 pub mod domain;
+mod routes;
 pub mod services;
 pub mod utils;
+pub mod validations;
 
-use std::env;
-use std::error::Error;
-use std::net::SocketAddr;
-use std::sync::Arc;
-use axum::Router;
-use axum::response::Html;
-use axum::routing::{get, post};
-use axum_server::tls_rustls::RustlsConfig;
-use tokio::sync::RwLock;
-use tower_http::services::ServeDir;
 use crate::domain::data_stores::UserStore;
 use crate::routes::login::login_handler;
 use crate::routes::logout::logout_handler;
 use crate::routes::signup::signup_handler;
 use crate::routes::verify_2fa::verify_2fa_handler;
 use crate::routes::verify_token::verify_token_handler;
+use axum::http::{Method, StatusCode};
+use axum::response::{Html, IntoResponse};
+use axum::routing::{get, post};
+use axum::Router;
+use axum_server::tls_rustls::RustlsConfig;
+use std::error::Error;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::{env, fs};
+use askama::Template;
+use tokio::sync::RwLock;
+use tower_http::cors::AllowOrigin;
+use tower_http::{cors::CorsLayer, services::ServeDir};
 
 // This struct encapsulates our application-related logic.
 pub struct Application {
@@ -32,9 +36,21 @@ pub struct Application {
 
 impl Application {
     pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
+
         println!("Build with address: {:?}", address);
 
-        let router = create_router(app_state);
+        let droplet_id = get_droplet_id();
+
+        let allowed_origins = [
+            "http://localhost:8000".parse()?,
+            "https://localhost:8000".parse()?,
+            format!("http://[{:?})]:8000", droplet_id).parse()?,
+            format!("https://[{:?})]:8000", droplet_id).parse()?,
+        ];
+
+        let cors_layer = create_cors_layer(allowed_origins.into());
+
+        let router = create_router(app_state, cors_layer);
         let addr: SocketAddr = address.parse()?;
         let tls_enabled = get_tls_config();
 
@@ -71,10 +87,12 @@ impl Application {
     }
 
     async fn start_https_server(self) -> Result<(), Box<dyn Error>> {
-        let cert_path = env::var("TLS_CERT_PATH")
-            .unwrap_or_else(|_| "/etc/letsencrypt/live/bootcamp-auth.jocax.com/fullchain.pem".to_string());
-        let key_path = env::var("TLS_KEY_PATH")
-            .unwrap_or_else(|_| "/etc/letsencrypt/live/bootcamp-auth.jocax.com/privkey.pem".to_string());
+        let cert_path = env::var("TLS_CERT_PATH").unwrap_or_else(|_| {
+            "/etc/letsencrypt/live/bootcamp-auth.jocax.com/fullchain.pem".to_string()
+        });
+        let key_path = env::var("TLS_KEY_PATH").unwrap_or_else(|_| {
+            "/etc/letsencrypt/live/bootcamp-auth.jocax.com/privkey.pem".to_string()
+        });
 
         let config = RustlsConfig::from_pem_file(cert_path, key_path)
             .await
@@ -92,7 +110,9 @@ impl Application {
             None => tokio::net::TcpListener::bind(self.address).await?,
         };
         println!("listening on {}", listener.local_addr()?);
-        axum::serve(listener, self.router).await.map_err(|e| e.into())
+        axum::serve(listener, self.router)
+            .await
+            .map_err(|e| e.into())
     }
 }
 
@@ -109,23 +129,55 @@ fn get_tls_config() -> bool {
         .unwrap_or(false)
 }
 
-async fn root_handler() -> Html<&'static str> {
-    Html(include_str!("../assets/index.html"))
+async fn root() -> impl IntoResponse {
+
+let base_url = get_base_url();
+
+    let template = IndexTemplate {
+        base_url,
+    };
+
+    Html(template.render().unwrap())
+}
+async fn favicon() -> impl IntoResponse {
+    let path = format!("{}/favicon.ico", get_assets_path().to_str().unwrap());
+
+    match std::fs::read(path) {
+        Ok(icon) => (
+            [("Content-Type", "image/x-icon")],
+            icon
+        ).into_response(),
+        Err(_) => StatusCode::NOT_FOUND.into_response(),
+    }
 }
 
-fn create_router(app_state: AppState) -> Router {
+fn create_router(app_state: AppState, cors_layer: CorsLayer) -> Router {
+
+    let assets_path = get_assets_path();
 
     let auth_router = Router::new()
-        .route("/", get(root_handler))
-        .nest_service("/assets", ServeDir::new("assets"))
+        .nest_service("/assets", ServeDir::new(assets_path))
+        .route("/", get(root))
+        .route("/favicon.ico", get(favicon))
         .route("/api/signup", post(signup_handler))
         .route("/api/login", post(login_handler))
         .route("/api/logout", post(logout_handler))
         .route("/api/verify-2fa", post(verify_2fa_handler))
         .route("/api/verify-token", post(verify_token_handler))
-        .with_state(app_state);
+        .with_state(app_state)
+        .layer(cors_layer);
 
-    Router::new().nest("/auth", auth_router)
+        auth_router
+
+}
+
+fn create_cors_layer(allowed_origins: AllowOrigin) -> CorsLayer {
+    CorsLayer::new()
+        // Allow GET and POST requests
+        .allow_methods([Method::GET, Method::POST])
+        // Allow cookies to be included in requests
+        .allow_credentials(true)
+        .allow_origin(allowed_origins)
 }
 
 // Using a type alias to improve readability!
@@ -137,7 +189,32 @@ pub struct AppState {
 }
 
 impl AppState {
-   pub fn new(user_store: UserStoreType) -> Self {
-       Self { user_store }
-   }
+    pub fn new(user_store: UserStoreType) -> Self {
+        Self { user_store }
+    }
+}
+
+fn get_assets_path() -> PathBuf {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let assets_path = PathBuf::from(manifest_dir).join("assets");
+
+    if !assets_path.exists() {
+        panic!("Assets directory not found at {:?}", assets_path);
+    }
+
+    assets_path.to_path_buf()
+}
+
+fn get_droplet_id() -> String {
+    env::var("DROPLET_ID").unwrap_or_else(|_| "127.0.0.1".to_string())
+}
+
+fn get_base_url() -> String {
+    env::var("BASE_URL").unwrap_or("http://localhost:8001".to_owned())
+}
+
+#[derive(Template)]
+#[template(path = "index.html")]
+struct IndexTemplate {
+    base_url: String,
 }

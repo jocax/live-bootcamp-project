@@ -6,7 +6,7 @@ services:
       - "80:80"    # Use HTTP port 80 for local development
       - "443:443"  # Keep HTTPS available for testing
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx.local.conf:/etc/nginx/nginx.conf:ro
       # Remove SSL certificate volumes for local development
 
   app-service:
@@ -14,7 +14,8 @@ services:
       context: ./app-service
     environment:
       TLS_ENABLED: "false"
-      AUTH_SERVICE_HOST_NAME: auth-service
+      AUTH_SERVICE_BASE_URL: "http://live-bootcamp.local/auth"
+      BASE_URL: "http://live-bootcamp.local/app"
     ports:
       - "8000:8000"  # Expose for direct access during development
     # Remove certificate volumes for local development
@@ -25,6 +26,7 @@ services:
       context: ./auth-service
     environment:
       TLS_ENABLED: "false"
+      BASE_URL: "http://live-bootcamp.local/auth"
     ports:
       - "8001:8001"  # Expose for direct access during development
     # Remove certificate volumes for local development

@@ -2,16 +2,11 @@ use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug)]
-pub struct LogoutRequest {
-    token: String,
-}
+pub struct LogoutRequest {}
 
 impl LogoutRequest {
-    pub fn new(token: String) -> Self {
-        Self { token }
-    }
-    pub fn get_token(&self) -> String {
-        self.token.clone()
+    pub fn new() -> Self {
+        Self {}
     }
 }
 

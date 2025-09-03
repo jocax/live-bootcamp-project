@@ -14,9 +14,11 @@ use auth_service::{AppState, Application, UserStoreType};
 use uuid::Uuid;
 use auth_service::domain::data_stores::UserStore;
 use auth_service::services::HashMapUserStore;
+use reqwest::cookie::Jar;
 
 pub struct TestApp {
     pub address: String,
+    pub cookie_jar: Arc<Jar>,
     pub http_client: reqwest::Client,
 }
 
@@ -28,13 +30,13 @@ impl TestApp {
     //we use in the unit tests the same url as later in the deployment via docker compose and nginx
     //http://server:port/auth/api
     fn api_url(&self, endpoint: &str) -> String {
-        format!("{}/auth/api{}", self.address, endpoint)
+        format!("{}/api{}", self.address, endpoint)
     }
 
     //we use in the unit tests the same url as later in the deployment via docker compose and nginx
     // http://server:port/auth
     fn ui_url(&self, path: &str) -> String {
-        format!("{}/auth{}", self.address, path)
+        format!("{}/{}", self.address, path)
     }
 }
 
@@ -65,11 +67,17 @@ impl TestApp {
         // Give the server a moment to start
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-        let http_client = reqwest::Client::new();
+        let cookie_jar = Arc::new(Jar::default());
+
+        let http_client = reqwest::Client::builder()
+            .cookie_provider(cookie_jar.clone())
+            .build()
+            .unwrap();
 
         // Create new `TestApp` instance and return it
         TestApp {
             address,
+            cookie_jar,
             http_client: http_client,
         }
     }

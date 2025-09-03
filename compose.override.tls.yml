@@ -15,7 +15,8 @@ services:
       context: ./app-service
     environment:
       TLS_ENABLED: "true"  # Keep TLS enabled for production-like testing
-      AUTH_SERVICE_HOST_NAME: auth-service
+      AUTH_SERVICE_BASE_URL: "https://live-bootcamp.local/auth"
+      BASE_URL: "https://live-bootcamp.local/app"
       TLS_CERT_PATH: "/home/deploy/live-bootcamp/certs/cert.pem"
       TLS_KEY_PATH: "/home/deploy/live-bootcamp/certs/key.pem"
     ports:
@@ -28,6 +29,7 @@ services:
       context: ./auth-service
     environment:
       TLS_ENABLED: "true"  # Keep TLS enabled for production-like testing
+      BASE_URL: "https://live-bootcamp.local/auth"
       TLS_CERT_PATH: "/home/deploy/live-bootcamp/certs/cert.pem"
       TLS_KEY_PATH: "/home/deploy/live-bootcamp/certs/key.pem"
     ports:

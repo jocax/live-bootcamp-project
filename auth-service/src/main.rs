@@ -2,7 +2,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use auth_service::{AppState, Application, UserStoreType};
 use auth_service::services::HashMapUserStore;
-
+use auth_service::utils::constants::prod;
 
 #[tokio::main]
 async fn main() {
@@ -11,7 +11,7 @@ async fn main() {
     // app state
     let app_state = AppState::new(user_store);
 
-    let app = Application::build(app_state, "0.0.0.0:8001")
+    let app = Application::build(app_state, prod::APP_ADDRESS)
         .await
         .expect("Failed to build app");
 

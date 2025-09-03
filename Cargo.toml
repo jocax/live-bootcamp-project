@@ -19,7 +19,7 @@ axum = { version = "0.8" }
 axum-extra = { version = "0.10", features = ["cookie"] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
 tokio = { version = "1", features = ["full"] }
-tower-http = { version = "0.6", features = ["fs"] }
+tower-http = { version = "0.6", features = ["fs", "cors"] }
 serde_json = { version = "1" }
 serde = { version = "1", features = ["derive"] }
 derivative = { version = "2" }

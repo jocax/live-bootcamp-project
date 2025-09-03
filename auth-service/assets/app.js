@@ -1,3 +1,7 @@
+// Get the base path from document.baseURI
+const baseUrl = new URL(document.baseURI);
+const contextPath = baseUrl.pathname.endsWith('/') ? baseUrl.pathname : baseUrl.pathname + '/';
+
 const loginSection = document.getElementById("login-section");
 const twoFASection = document.getElementById("2fa-section");
 const signupSection = document.getElementById("signup-section");
@@ -5,6 +9,13 @@ const signupSection = document.getElementById("signup-section");
 const signupLink = document.getElementById("signup-link");
 const twoFALoginLink = document.getElementById("2fa-login-link");
 const signupLoginLink = document.getElementById("signup-login-link");
+
+// Helper function to build URLs with context path
+function buildUrl(path) {
+    // Remove leading slash from path if present
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return contextPath + cleanPath;
+}
 
 signupLink.addEventListener("click", (e) => {
     e.preventDefault();
@@ -42,7 +53,7 @@ loginButton.addEventListener("click", (e) => {
     const email = loginForm.email.value;
     const password = loginForm.password.value;
 
-    fetch('/login', {
+    fetch(buildUrl('/api/login'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -92,7 +103,7 @@ signupButton.addEventListener("click", (e) => {
     const password = signupForm.password.value;
     const requires2FA = signupForm.twoFA.checked;
 
-    fetch('/signup', {
+    fetch(buildUrl('/api/signup'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -133,7 +144,7 @@ TwoFAButton.addEventListener("click", (e) => {
     const loginAttemptId = TwoFAForm.login_attempt_id.value;
     const TwoFACode = TwoFAForm.email_code.value;
 
-    fetch('/verify-2fa', {
+    fetch(buildUrl('/api/verify-2fa'), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

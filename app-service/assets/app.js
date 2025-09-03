@@ -1,6 +1,17 @@
+// Get the base path from document.baseURI
+const baseUrl = new URL(document.baseURI);
+const contextPath = baseUrl.pathname.endsWith('/') ? baseUrl.pathname : baseUrl.pathname + '/';
+
 const loginLink = document.getElementById("login-link");
 const logoutLink = document.getElementById("logout-link");
 const protectImg = document.getElementById("protected-img");
+
+// Helper function to build URLs with context path
+function buildUrl(path) {
+    // Remove leading slash from path if present
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    return contextPath + cleanPath;
+}
 
 logoutLink.addEventListener("click", (e) => {
     e.preventDefault();
@@ -14,7 +25,7 @@ logoutLink.addEventListener("click", (e) => {
         if (response.ok) {
             loginLink.style.display = "block";
             logoutLink.style.display = "none";
-            protectImg.src = "/app/assets/default.jpg";
+            protectImg.src = buildUrl("assets/default.jpg");
         } else {
             alert("Failed to logout");
         }
@@ -22,7 +33,7 @@ logoutLink.addEventListener("click", (e) => {
 });
 
 (() => {
-    fetch('protected').then(response => {
+    fetch(buildUrl('protected')).then(response => {
         if (response.ok) {
             loginLink.style.display = "none";
             logoutLink.style.display = "block";
@@ -32,13 +43,13 @@ logoutLink.addEventListener("click", (e) => {
                 if (img_url !== undefined && img_url !== null && img_url !== "") {
                     protectImg.src = img_url;
                 } else {
-                    protectImg.src = "/app/assets/default.jpg";
+                    protectImg.src = buildUrl("assets/default.jpg");
                 }
             });
         } else {
             loginLink.style.display = "block";
             logoutLink.style.display = "none";
-            protectImg.src = "/app/assets/default.jpg";
+            protectImg.src = buildUrl("assets/default.jpg");
         }
     });
 })();
