@@ -11,7 +11,7 @@ use crate::routes::logout::logout_handler;
 use crate::routes::signup::signup_handler;
 use crate::routes::verify_2fa::verify_2fa_handler;
 use crate::routes::verify_token::verify_token_handler;
-use axum::http::{Method, StatusCode};
+use axum::http::{header, Method, StatusCode};
 use axum::response::{Html, IntoResponse};
 use axum::routing::{get, post};
 use axum::Router;
@@ -20,7 +20,7 @@ use std::error::Error;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::{env, fs};
+use std::{env};
 use askama::Template;
 use tokio::sync::RwLock;
 use tower_http::cors::AllowOrigin;
@@ -178,6 +178,7 @@ fn create_cors_layer(allowed_origins: AllowOrigin) -> CorsLayer {
         // Allow cookies to be included in requests
         .allow_credentials(true)
         .allow_origin(allowed_origins)
+        .allow_headers([header::CONTENT_TYPE])
 }
 
 // Using a type alias to improve readability!

@@ -106,7 +106,6 @@ async fn protected(jar: CookieJar) -> impl IntoResponse {
     });
 
     let auth_hostname = env::var("AUTH_SERVICE_HOST_NAME").unwrap_or("localhost".to_owned());
-    let auth_context = env::var("AUTH_SERVICE_CONTEXT_PATH").unwrap_or("".to_owned());
     let tls_enabled = get_tls_config();
     let (protocol, port) = if tls_enabled {
         ("https", AUTH_SERVICE_PORT)
@@ -114,8 +113,8 @@ async fn protected(jar: CookieJar) -> impl IntoResponse {
         ("http", AUTH_SERVICE_PORT)
     };
     let url = format!(
-        "{}://{}:{}{}/api/verify-token",
-        protocol, auth_hostname, port, auth_context
+        "{}://{}:{}/api/verify-token",
+        protocol, auth_hostname, port
     );
 
     let response = match api_client.post(&url).json(&verify_token_body).send().await {

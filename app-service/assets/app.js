@@ -21,6 +21,10 @@ logoutLink.addEventListener("click", (e) => {
     fetch(url, {
         method: 'POST',
         credentials: 'include', // This will include cookies in the request
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
     }).then(response => {
         if (response.ok) {
             loginLink.style.display = "block";

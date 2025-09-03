@@ -25,3 +25,9 @@ async fn test_verify_token() {
     assert!(cookies.is_empty(), "Expected no cookie to be set");
 
 }
+
+#[tokio::test]
+async fn should_return_422_if_malformed_input() {
+    todo!()
+}
+
