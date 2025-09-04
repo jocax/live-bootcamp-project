@@ -96,8 +96,8 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     #[should_panic(expected = "JWT_SECRET must not be empty")]
+    #[serial]
     fn test_set_token_with_empty_string() {
         with_env_var(env::JWT_SECRET_ENV_VAR, Some(""), || {
             set_token();
@@ -128,7 +128,6 @@ mod tests {
     // Integration test for lazy_static initialization
     #[test]
     #[serial]
-    // #[ignore] // This test modifies the global state
     fn test_jwt_secret_lazy_static() {
         with_env_var(env::JWT_SECRET_ENV_VAR, Some("lazy_static_secret"), || {
             // Force lazy_static initialization
