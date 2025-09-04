@@ -3,13 +3,14 @@ name = "app-service"
 edition = "2021"
 
 [dependencies]
-axum = { workspace = true }
+axum.workspace = true
 axum-extra = { workspace = true, features = ["cookie"] }
-tower-http = { workspace = true, features = ["fs", "trace"], version = "1.0.0" }
+tower-http = { workspace = true, features = ["fs", "trace"] }
 axum-server = { workspace = true }
-tokio = { workspace = true }
-reqwest = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-askama = { workspace = true }
+tokio.workspace = true
+reqwest.workspace = true
+rustls.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+askama.workspace = true
 

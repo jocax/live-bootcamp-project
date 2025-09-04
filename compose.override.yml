@@ -10,6 +10,9 @@ services:
       # Remove SSL certificate volumes for local development
 
   app-service:
+    extra_hosts:
+      # or if nginx is in a container:
+      - "live-bootcamp.local:host-gateway"  # Special Docker keyword that resolves to host
     build:
       context: ./app-service
     environment:

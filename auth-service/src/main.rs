@@ -6,6 +6,9 @@ use auth_service::utils::constants::prod;
 
 #[tokio::main]
 async fn main() {
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install crypto provider");
     //user data
     let user_store: UserStoreType = Arc::new(RwLock::new(HashMapUserStore::default()));
     //token data

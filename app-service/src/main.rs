@@ -15,7 +15,6 @@ use std::path::PathBuf;
 use tower_http::services::ServeDir;
 
 /// Must match with the port number used in docker-compose.yml for the app-service. Switched from 3000 -> 8001 due to local conflict
-const AUTH_SERVICE_PORT: u16 = 8001u16;
 const APP_SERVICE_PORT: u16 = 8000u16;
 
 #[tokio::main]
@@ -23,6 +22,10 @@ async fn main() {
     let tls_enabled = get_tls_config();
     let addr = SocketAddr::from(([0, 0, 0, 0], APP_SERVICE_PORT));
     let app = create_router();
+
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install crypto provider");
 
     if tls_enabled {
         println!("Starting app-service with TLS on {}", addr);
@@ -99,40 +102,61 @@ async fn protected(jar: CookieJar) -> impl IntoResponse {
         }
     };
 
-    let api_client = reqwest::Client::builder().build().unwrap();
+    let api_client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .use_rustls_tls()
+        .connection_verbose(true)
+        .danger_accept_invalid_hostnames(true)
+        .http1_ignore_invalid_headers_in_responses(true)
+        .tls_info(true)
+        .tls_sni(true)
+        .build()
+        .unwrap();
+
+    let result = api_client.get("https://www.google.com").send().await;
+
+    // This should NOT give "invalid URL, scheme is not http" error
+    match result {
+        Ok(_) => eprintln!("HTTPS is supported"),
+        Err(e) => {
+            eprintln!("Error: {:?}", e);
+            assert!(!e.to_string().contains("scheme is not http"),
+                    "TLS support is not compiled in!");
+        }
+    }
 
     let verify_token_body = serde_json::json!({
         "token": &jwt_cookie.value(),
     });
 
-    let auth_hostname = env::var("AUTH_SERVICE_HOST_NAME").unwrap_or("localhost".to_owned());
-    let tls_enabled = get_tls_config();
-    let (protocol, port) = if tls_enabled {
-        ("https", AUTH_SERVICE_PORT)
-    } else {
-        ("http", AUTH_SERVICE_PORT)
-    };
     let url = format!(
-        "{}://{}:{}/api/verify-token",
-        protocol, auth_hostname, port
+        "{}/api/verify-token",
+        get_auth_service_base_url()
     );
 
     let response = match api_client.post(&url).json(&verify_token_body).send().await {
         Ok(response) => response,
-        Err(_) => {
+        Err(error) => {
+            println!("Failed to verify token. Error: {:?}", error);
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
 
     match response.status() {
         reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::BAD_REQUEST => {
+            println!("Failed to verify token. Status code from response: {:?}", response.status());
             StatusCode::UNAUTHORIZED.into_response()
         }
-        reqwest::StatusCode::OK => Json(ProtectedRouteResponse {
-            img_url: "https://i.ibb.co/YP90j68/Light-Live-Bootcamp-Certificate.png".to_owned(),
-        })
-        .into_response(),
-        _ => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        reqwest::StatusCode::OK => {
+            println!("Success to verify token. : {:?}", response.status());
+            Json(ProtectedRouteResponse {
+                img_url: "https://i.ibb.co/YP90j68/Light-Live-Bootcamp-Certificate.png".to_owned(),
+            }).into_response()
+        },
+        error => {
+            println!("Failed to verify token. Unexpected status code from remote server: {:?}", error);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
     }
 }
 
@@ -178,4 +202,20 @@ fn get_tls_config() -> bool {
         .unwrap_or_default()
         .parse::<bool>()
         .unwrap_or(false)
+}
+
+#[tokio::test]
+async fn test_https_support() {
+    let client = reqwest::Client::new();
+    let result = client.get("https://www.google.com").send().await;
+
+    // This should NOT give "invalid URL, scheme is not http" error
+    match result {
+        Ok(_) => println!("HTTPS is supported"),
+        Err(e) => {
+            println!("Error: {:?}", e);
+            assert!(!e.to_string().contains("scheme is not http"),
+                    "TLS support is not compiled in!");
+        }
+    }
 }

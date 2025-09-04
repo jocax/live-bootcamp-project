@@ -33,6 +33,7 @@ dotenvy.workspace = true
 tracing.workspace = true
 lazy_static.workspace = true
 askama = { workspace = true }
+rustls.workspace = true
 
 [dev-dependencies]
 reqwest = { workspace = true, default-features = false, features = ["cookies"] }

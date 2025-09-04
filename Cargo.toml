@@ -15,6 +15,7 @@ repository = "https://github.com/jocax/live-bootcamp-project"
 keywords = ["rust"]
 
 [workspace.dependencies]
+rustls = { version = "0.23", features = ["ring"] }
 axum = { version = "0.8" }
 axum-extra = { version = "0.10", features = ["cookie"] }
 axum-server = { version = "0.7", features = ["tls-rustls"] }
@@ -37,7 +38,8 @@ lazy_static = { version = "1"}
 tracing = "0.1"
 
 # Libs for testing
-reqwest = { version = "0.12", default-features = false, features = ["json"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+hyper = { version = "1.7", features = ["full"]}
 mockall = { version = "0.13" }
 fake = { version = "4.4", features = ["derive"] }
 rand = { version = "0.9" }
