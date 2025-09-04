@@ -131,7 +131,8 @@ mod tests {
     fn test_jwt_secret_lazy_static() {
         with_env_var(env::JWT_SECRET_ENV_VAR, Some("lazy_static_secret"), || {
             // Force lazy_static initialization
-            let secret = &*JWT_SECRET;
+            // let secret = &*JWT_SECRET;
+            let secret = set_token();;
             assert_eq!(secret, "lazy_static_secret");
         });
     }
