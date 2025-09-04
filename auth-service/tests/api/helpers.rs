@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
 use axum_extra::extract::cookie::Cookie;
-use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use auth_service::api::login::LoginRequest;
@@ -10,11 +10,12 @@ use auth_service::api::logout::LogoutRequest;
 use auth_service::api::signup::SignUpRequest;
 use auth_service::api::verify_2fa::Verify2FARequest;
 use auth_service::api::verify_token::VerifyTokenRequest;
-use auth_service::{AppState, Application, UserStoreType};
+use auth_service::{AppState, Application, BannedTokenStoreType, UserStoreType};
 use uuid::Uuid;
-use auth_service::domain::data_stores::UserStore;
-use auth_service::services::HashMapUserStore;
+use auth_service::domain::data_stores::{BannedTokenStore, UserStore};
+use auth_service::services::{HashMapBannedTokenStore, HashMapUserStore};
 use reqwest::cookie::Jar;
+use auth_service::utils::constants::JWT_SECRET;
 
 pub struct TestApp {
     pub address: String,
@@ -41,11 +42,9 @@ impl TestApp {
 }
 
 impl TestApp {
-    pub async fn new(user_store: UserStoreType) -> Self {
+    pub async fn new(user_store: UserStoreType, banned_token_store: BannedTokenStoreType) -> Self {
 
-        // let user_store: UserStoreType = user_store_type.unwrap_or_else(|| Arc::new(RwLock::new(HashMapUserStore::default())));
-
-        let app_state = AppState::new(user_store);
+        let app_state = AppState::new(user_store, banned_token_store);
 
         // Ensure TLS is disabled for tests
         std::env::set_var("TLS_ENABLED", "false");
@@ -165,7 +164,7 @@ impl TestApp {
         println!("POST {}", &url);
         self.http_client
             .post(&url)
-            .json(&verify_token_request.get_token())
+            .json(&verify_token_request)
             .send()
             .await
             .expect("Failed to execute verify-token request.")
@@ -174,6 +173,10 @@ impl TestApp {
 
 pub fn create_user_store_type() -> Arc<RwLock<dyn UserStore>> {
     Arc::new(RwLock::new(HashMapUserStore::default()))
+}
+
+pub fn create_banned_toke_store_type() -> Arc<RwLock<dyn BannedTokenStore>> {
+    Arc::new(RwLock::new(HashMapBannedTokenStore::default()))
 }
 
 pub fn get_cookies(response: &'_ reqwest::Response) -> HashMap<String, Cookie<'_>> {
@@ -189,25 +192,42 @@ pub fn get_cookies(response: &'_ reqwest::Response) -> HashMap<String, Cookie<'_
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
+pub struct HelpersClaims {
     pub sub: String,  // subject (email in your case)
     pub exp: i64,     // expiration time
 }
 
-impl Display for Claims {
+impl Display for HelpersClaims {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-pub fn decode_jwt(token: &str, secret: &[u8]) -> Result<Claims, jsonwebtoken::errors::Error> {
+pub fn decode_jwt(token: &str, secret: &[u8]) -> Result<HelpersClaims, jsonwebtoken::errors::Error> {
     let validation = Validation::new(Algorithm::HS256);
 
-    let token_data = decode::<Claims>(
+    let token_data = decode::<HelpersClaims>(
         token,
         &DecodingKey::from_secret(secret),
         &validation
     )?;
 
     Ok(token_data.claims)
+}
+
+pub fn create_exp_from_date_time(date_time: chrono::DateTime<chrono::Utc>) -> i64 {
+    date_time.timestamp()
+}
+pub fn create_claims(email: &str, exp: i64) -> HelpersClaims {
+    HelpersClaims {
+        sub: email.to_string(),
+        exp
+    }
+}
+pub fn create_token(claims: &HelpersClaims) -> Result<String, jsonwebtoken::errors::Error> {
+    encode(
+        &jsonwebtoken::Header::default(),
+        &claims,
+        &EncodingKey::from_secret(JWT_SECRET.as_bytes()), //same secret as in production code
+    )
 }

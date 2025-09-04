@@ -35,6 +35,7 @@ fn test_serialization() {
 async fn test_login() {
 
     let user_store_type = helpers::create_user_store_type();
+    let banned_token_store_type = helpers::create_banned_toke_store_type();
 
     let password_value = String::from("password123");
     let email = Email::try_from("test@example.com".to_string()).unwrap();
@@ -43,7 +44,7 @@ async fn test_login() {
     let user = User::new(email.clone(), password, false);
 
     user_store_type.write().await.add_user(user.clone()).await.expect("Failed to add user");
-    let app = TestApp::new(user_store_type).await;
+    let app = TestApp::new(user_store_type, banned_token_store_type).await;
 
     let login_request = LoginRequest::new(
        email,
@@ -88,7 +89,8 @@ async fn test_login() {
 async fn should_return_422_if_malformed_credentials() {
 
     let user_store_type = helpers::create_user_store_type();
-    let app = TestApp::new(user_store_type).await;
+    let banned_token_store_type = helpers::create_banned_toke_store_type();
+    let app = TestApp::new(user_store_type, banned_token_store_type).await;
 
     let unkown_request_body = json!({
         "field_name": "field_value"
@@ -104,6 +106,7 @@ async fn should_return_422_if_malformed_credentials() {
 async fn should_return_401_if_incorrect_credentials() {
 
     let user_store_type = helpers::create_user_store_type();
+    let banned_token_store_type = helpers::create_banned_toke_store_type();
 
     let password_value = String::from("password123");
     let email = Email::try_from("test@example.com".to_string()).unwrap();
@@ -112,7 +115,7 @@ async fn should_return_401_if_incorrect_credentials() {
     let user = User::new(email.clone(), password, false);
 
     user_store_type.write().await.add_user(user.clone()).await.expect("Failed to add user");
-    let app = TestApp::new(user_store_type).await;
+    let app = TestApp::new(user_store_type, banned_token_store_type).await;
 
     let login_request = LoginRequest::new(email,"wrong_password_1234".to_string());
 
@@ -126,6 +129,7 @@ async fn should_return_401_if_incorrect_credentials() {
 async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
 
     let user_store_type = helpers::create_user_store_type();
+    let banned_token_store_type = helpers::create_banned_toke_store_type();
 
     let password_value = String::from("password123");
     let email = Email::try_from("test@example.com".to_string()).unwrap();
@@ -134,7 +138,7 @@ async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
     let user = User::new(email.clone(), password, false);
 
     user_store_type.write().await.add_user(user.clone()).await.expect("Failed to add user");
-    let app = TestApp::new(user_store_type).await;
+    let app = TestApp::new(user_store_type, banned_token_store_type).await;
 
     let random_email = Email::try_from("test@example.com".to_string()).unwrap();
 

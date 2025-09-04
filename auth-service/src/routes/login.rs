@@ -51,7 +51,7 @@ pub async fn login_handler(
             return Err(AuthAPIError::UnexpectedError);
         }
     };
-
+    
     let updated_cookie_jar = cookie_jar.add(auth_cookie);
 
     let mut headers = HeaderMap::new();
@@ -69,22 +69,22 @@ pub async fn login_handler(
 mod tests {
     use super::*;
     use crate::api::login::LoginRequest;
-    use crate::domain::data_stores::MockUserStore;
-    use axum::body::to_bytes;
-    use axum::response::Response;
+    use crate::domain::data_stores::{MockBannedTokenStore, MockUserStore};
     use reqwest::header::SET_COOKIE;
-    use serde_json::{Value};
 
-    // Helper function to create app state with mock user store
+    // Helper function to create app state with mock user store and banned token store
     fn create_app_state_with_mock<F>(setup: F) -> AppState
     where
-        F: FnOnce(&mut MockUserStore),
+        F: FnOnce(&mut MockUserStore, &mut MockBannedTokenStore),
     {
         let mut mock_user_store = MockUserStore::new();
-        setup(&mut mock_user_store);
+        let mut mock_banned_token_store = MockBannedTokenStore::new();
+
+        setup(&mut mock_user_store, &mut mock_banned_token_store);
 
         AppState {
             user_store: std::sync::Arc::new(tokio::sync::RwLock::new(mock_user_store)),
+            banned_token_store: std::sync::Arc::new(tokio::sync::RwLock::new(mock_banned_token_store)),
         }
     }
 
@@ -96,21 +96,15 @@ mod tests {
         )
     }
 
-    // Helper function to extract JSON body from response
-    async fn extract_json_body(response: Response) -> Value {
-        let body_bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
-        serde_json::from_slice(&body_bytes).unwrap()
-    }
-
     #[tokio::test]
     async fn test_login_handler() {
         // Arrange
-        let _app_state = create_app_state_with_mock(|mock| {
+        let _app_state = create_app_state_with_mock(|mock,_| {
             mock.expect_validate_user().returning(|_, _| Ok(()));
         });
 
         // Arrange
-        let app_state = create_app_state_with_mock(|mock| {
+        let app_state = create_app_state_with_mock(|mock,_| {
             mock.expect_validate_user().returning(|_, _| Ok(()));
         });
 

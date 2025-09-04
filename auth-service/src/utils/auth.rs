@@ -1,7 +1,10 @@
+
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use chrono::Utc;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Validation};
+use jsonwebtoken::errors::ErrorKind;
 use serde::{Deserialize, Serialize};
+use crate::BannedTokenStoreType;
 use crate::domain::types::Email;
 use super::constants::JWT_COOKIE_NAME;
 use super::constants::JWT_SECRET;
@@ -59,14 +62,25 @@ fn generate_auth_token(email: &Email) -> Result<String, GenerateTokenError> {
     create_token(&claims).map_err(GenerateTokenError::TokenError)
 }
 
-// Check if JWT auth token is valid by decoding it using the JWT secret
-pub async fn validate_token(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
-    decode::<Claims>(
+// Check if JWT auth token is valid by decoding it using the JWT secret and check against the banned token store
+pub async fn validate_token(token: &str, banned_token_store: &BannedTokenStoreType) -> Result<Claims, jsonwebtoken::errors::Error> {
+    // First, decode the token
+    let token_data = decode::<Claims>(
         token,
         &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
         &Validation::default(),
-    )
-        .map(|data| data.claims)
+    )?;
+
+    // Then check if it's banned
+    let banned_store = banned_token_store.read().await;
+    let is_banned = banned_store.is_banned(token).await
+        .map_err(|_| jsonwebtoken::errors::Error::from(ErrorKind::InvalidToken))?;
+
+    if is_banned {
+        return Err(jsonwebtoken::errors::Error::from(ErrorKind::InvalidToken));
+    }
+
+    Ok(token_data.claims)
 }
 
 // Create JWT auth token by encoding claims using the JWT secret
@@ -86,7 +100,26 @@ pub struct Claims {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
     use super::*;
+    use chrono::Duration;
+    use jsonwebtoken::{encode, EncodingKey, Header};
+    use tokio::sync::RwLock;
+    use crate::services::HashMapBannedTokenStore;
+
+    fn create_test_token(exp_hours: i64) -> String {
+        let claims = Claims {
+            sub: "test@example.com".to_string(),
+            exp: (Utc::now() + Duration::hours(exp_hours)).timestamp() as usize,
+        };
+
+        encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
+        )
+            .unwrap()
+    }
 
     #[tokio::test]
     async fn test_generate_auth_cookie() {
@@ -121,7 +154,9 @@ mod tests {
     async fn test_validate_token_with_valid_token() {
         let email = Email::try_from("test@example.com".to_owned()).unwrap();
         let token = generate_auth_token(&email).unwrap();
-        let result = validate_token(&token).await.unwrap();
+        let banned_store: BannedTokenStoreType = Arc::new(RwLock::new(HashMapBannedTokenStore::new()));
+
+        let result = validate_token(&token, &banned_store).await.unwrap();
         assert_eq!(result.sub, "test@example.com");
 
         let exp = Utc::now()
@@ -134,8 +169,58 @@ mod tests {
 
     #[tokio::test]
     async fn test_validate_token_with_invalid_token() {
-        let token = "invalid_token".to_owned();
-        let result = validate_token(&token).await;
+        let token = "invalid.token.here";
+        let banned_store: BannedTokenStoreType = Arc::new(RwLock::new(HashMapBannedTokenStore::new()));
+        let result = validate_token(&token, &banned_store).await;
         assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_validate_token_with_expired_token() {
+        let token = create_test_token(-1); // expired 1 hour ago
+        let banned_store: BannedTokenStoreType = Arc::new(RwLock::new(HashMapBannedTokenStore::new()));
+
+        let result = validate_token(&token, &banned_store).await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), &ErrorKind::ExpiredSignature);
+    }
+
+    #[tokio::test]
+    async fn test_validate_token_with_banned_token() {
+        let email = Email::try_from("test@example.com".to_owned()).unwrap();
+        let token = generate_auth_token(&email).unwrap();
+        let banned_store: BannedTokenStoreType = Arc::new(RwLock::new(HashMapBannedTokenStore::new()));
+
+        // Ban the token
+        {
+            let mut store = banned_store.write().await;
+            store.ban_with_ttl(&token, Duration::hours(1)).await.unwrap();
+        }
+
+        // Try to validate the banned token
+        let result = validate_token(&token, &banned_store).await;
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), &ErrorKind::InvalidToken);
+    }
+
+    #[tokio::test]
+    async fn test_validate_token_banned_but_expired_ban() {
+        let email = Email::try_from("test@example.com".to_owned()).unwrap();
+        let token = generate_auth_token(&email).unwrap();
+        let banned_store: BannedTokenStoreType = Arc::new(RwLock::new(HashMapBannedTokenStore::new()));
+
+        // Ban the token with zero duration (immediately expired ban)
+        {
+            let mut store = banned_store.write().await;
+            store.ban_with_ttl(&token, Duration::seconds(0)).await.unwrap();
+        }
+
+        // Wait a tiny bit to ensure ban is expired
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+
+        // Token should validate successfully since ban is expired
+        let result = validate_token(&token, &banned_store).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().sub, "test@example.com");
     }
 }

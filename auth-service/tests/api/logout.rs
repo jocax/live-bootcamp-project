@@ -9,7 +9,8 @@ use crate::api::{helpers, TestApp};
 #[tokio::test]
 async fn should_return_400_if_jwt_cookie_missing() {
     let user_store_type = helpers::create_user_store_type();
-    let app = TestApp::new(user_store_type).await;
+    let banned_token_store_type = helpers::create_banned_toke_store_type();
+    let app = TestApp::new(user_store_type, banned_token_store_type).await;
 
     let logout_request = LogoutRequest::new();
 
@@ -20,7 +21,8 @@ async fn should_return_400_if_jwt_cookie_missing() {
 #[tokio::test]
 async fn should_return_401_if_invalid_token() {
     let user_store_type = helpers::create_user_store_type();
-    let app = TestApp::new(user_store_type).await;
+    let banned_token_store_type = helpers::create_banned_toke_store_type();
+    let app = TestApp::new(user_store_type, banned_token_store_type).await;
 
     // add invalid cookie
     app.cookie_jar.add_cookie_str(
@@ -41,7 +43,8 @@ async fn should_return_401_if_invalid_token() {
 #[tokio::test]
 async fn should_return_200_valid_token() {
     let user_store_type = helpers::create_user_store_type();
-    let app = TestApp::new(user_store_type).await;
+    let banned_token_store_type = helpers::create_banned_toke_store_type();
+    let app = TestApp::new(user_store_type, banned_token_store_type).await;
 
     let email = &Email::try_from("user@example.com").unwrap();
     let cookie = utils::auth::generate_auth_cookie(email).unwrap();

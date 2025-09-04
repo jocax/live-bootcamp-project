@@ -6,7 +6,8 @@ use crate::api::{helpers, TestApp};
 async fn signup_should_return_201() {
 
     let user_store_type = helpers::create_user_store_type();
-    let app = TestApp::new(user_store_type).await;
+    let banned_token_store_type = helpers::create_banned_toke_store_type();
+    let app = TestApp::new(user_store_type, banned_token_store_type).await;
 
     let signup_request = SignUpRequest::new(
         "test@example.com".to_string(),
@@ -26,7 +27,8 @@ async fn signup_should_return_201() {
 async fn should_return_422_if_malformed_input_json() {
 
     let user_store_type = helpers::create_user_store_type();
-    let app = TestApp::new(user_store_type).await;
+    let banned_token_store_type = helpers::create_banned_toke_store_type();
+    let app = TestApp::new(user_store_type, banned_token_store_type).await;
 
     let random_email = TestApp::get_random_email().await;
 
@@ -52,7 +54,8 @@ async fn should_return_422_if_malformed_input_json() {
 async fn should_return_409_if_email_already_exists() {
 
     let user_store_type = helpers::create_user_store_type();
-    let app = TestApp::new(user_store_type).await;
+    let banned_token_store_type = helpers::create_banned_toke_store_type();
+    let app = TestApp::new(user_store_type, banned_token_store_type).await;
 
     let signup_request = SignUpRequest::new(
         "test@example.com".to_string(),
@@ -88,7 +91,8 @@ async fn should_return_409_if_email_already_exists() {
 async fn should_return_400_if_malformed_input_entity() {
 
     let user_store_type = helpers::create_user_store_type();
-    let app = TestApp::new(user_store_type).await;
+    let banned_token_store_type = helpers::create_banned_toke_store_type();
+    let app = TestApp::new(user_store_type, banned_token_store_type).await;
 
     let test_cases = [
         SignUpRequest::new("user@example@".to_string(), "password123".to_string(), false),

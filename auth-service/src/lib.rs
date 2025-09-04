@@ -5,7 +5,7 @@ pub mod services;
 pub mod utils;
 pub mod validations;
 
-use crate::domain::data_stores::UserStore;
+use crate::domain::data_stores::{BannedTokenStore, UserStore};
 use crate::routes::login::login_handler;
 use crate::routes::logout::logout_handler;
 use crate::routes::signup::signup_handler;
@@ -183,15 +183,17 @@ fn create_cors_layer(allowed_origins: AllowOrigin) -> CorsLayer {
 
 // Using a type alias to improve readability!
 pub type UserStoreType = Arc<RwLock<dyn UserStore>>;
+pub type BannedTokenStoreType = Arc<RwLock<dyn BannedTokenStore>>;
 
 #[derive(Clone)]
 pub struct AppState {
     pub user_store: UserStoreType,
+    pub banned_token_store: BannedTokenStoreType,
 }
 
 impl AppState {
-    pub fn new(user_store: UserStoreType) -> Self {
-        Self { user_store }
+    pub fn new(user_store: UserStoreType, banned_token_store: BannedTokenStoreType) -> Self {
+        Self { user_store, banned_token_store }
     }
 }
 
