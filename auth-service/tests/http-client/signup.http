@@ -1,0 +1,10 @@
+### Send POST request with json body
+POST {{baseUrl}}/{{apiBasePath}}/signup
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123",
+  "requires2FA": false
+}
+

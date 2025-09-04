@@ -1,0 +1,9 @@
+### Send POST request with json body
+POST {{baseUrl}}/{{apiBasePath}}/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+
