@@ -10,11 +10,13 @@ use auth_service::api::logout::LogoutRequest;
 use auth_service::api::signup::SignUpRequest;
 use auth_service::api::verify_2fa::Verify2FARequest;
 use auth_service::api::verify_token::VerifyTokenRequest;
-use auth_service::{AppState, Application, BannedTokenStoreType, UserStoreType};
+use auth_service::{AppState, Application, BannedTokenStoreType, EmailClientType, Standard2FACodeStoreType, UserStoreType};
 use uuid::Uuid;
-use auth_service::domain::data_stores::{BannedTokenStore, UserStore};
-use auth_service::services::{HashMapBannedTokenStore, HashMapUserStore};
+use auth_service::domain::data_stores::{BannedTokenStore, Standard2FaStore, UserStore};
+use auth_service::services::{HashMapBannedTokenStore, HashMapUserStore, StdoutEmailClient};
 use reqwest::cookie::Jar;
+use auth_service::domain::email_client::EmailClient;
+use auth_service::services::hashmap_2fa_code_store::HashMapStandard2FaStore;
 use auth_service::utils::constants::JWT_SECRET;
 
 pub struct TestApp {
@@ -42,9 +44,14 @@ impl TestApp {
 }
 
 impl TestApp {
-    pub async fn new(user_store: UserStoreType, banned_token_store: BannedTokenStoreType) -> Self {
+    pub async fn new(
+        user_store: UserStoreType,
+        banned_token_store: BannedTokenStoreType,
+        standard_2fa_store: Standard2FACodeStoreType,
+        email_client: EmailClientType,
+    ) -> Self {
 
-        let app_state = AppState::new(user_store, banned_token_store);
+        let app_state = AppState::new(user_store, banned_token_store, standard_2fa_store, email_client);
 
         // Ensure TLS is disabled for tests
         std::env::set_var("TLS_ENABLED", "false");
@@ -177,6 +184,14 @@ pub fn create_user_store_type() -> Arc<RwLock<dyn UserStore>> {
 
 pub fn create_banned_toke_store_type() -> Arc<RwLock<dyn BannedTokenStore>> {
     Arc::new(RwLock::new(HashMapBannedTokenStore::default()))
+}
+
+pub fn create_standard_2fa_code_store_type() -> Arc<RwLock<dyn Standard2FaStore>> {
+    Arc::new(RwLock::new(HashMapStandard2FaStore::default()))
+}
+
+pub fn create_stdout_email_client_type() -> Arc<RwLock<dyn EmailClient>> {
+    Arc::new(RwLock::new(StdoutEmailClient::default()))
 }
 
 pub fn get_cookies(response: &'_ reqwest::Response) -> HashMap<String, Cookie<'_>> {

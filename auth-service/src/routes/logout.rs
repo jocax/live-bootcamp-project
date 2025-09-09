@@ -59,32 +59,35 @@ pub async fn logout_handler(
 mod tests {
     use mockall::predicate;
     use super::*;
-    use crate::domain::data_stores::{MockBannedTokenStore, MockUserStore};
+    use crate::domain::data_stores::{MockBannedTokenStore, MockStandard2FaStore, MockUserStore};
     use crate::domain::types::Email;
     use crate::AppState;
+    use crate::domain::email_client::MockEmailClient;
 
     // Helper function to create app state with mock user store and banned token store
     fn create_app_state_with_mock<F>(setup: F) -> AppState
     where
-        F: FnOnce(&mut MockUserStore, &mut MockBannedTokenStore),
+        F: FnOnce(&mut MockUserStore, &mut MockBannedTokenStore, &mut MockStandard2FaStore, &mut MockEmailClient) ,
     {
         let mut mock_user_store = MockUserStore::new();
         let mut mock_banned_token_store = MockBannedTokenStore::new();
+        let mut mock_standard_2fa_code_store = MockStandard2FaStore::new();
+        let mut mock_email_client = MockEmailClient::new();
 
-        setup(&mut mock_user_store, &mut mock_banned_token_store);
+        setup(&mut mock_user_store, &mut mock_banned_token_store, &mut mock_standard_2fa_code_store, &mut mock_email_client);
 
         AppState {
             user_store: std::sync::Arc::new(tokio::sync::RwLock::new(mock_user_store)),
-            banned_token_store: std::sync::Arc::new(tokio::sync::RwLock::new(
-                mock_banned_token_store,
-            )),
+            banned_token_store: std::sync::Arc::new(tokio::sync::RwLock::new(mock_banned_token_store)),
+            standard_2fa_code_store:  std::sync::Arc::new(tokio::sync::RwLock::new(mock_standard_2fa_code_store)),
+            email_client:  std::sync::Arc::new(tokio::sync::RwLock::new(mock_email_client)),
         }
     }
 
     #[tokio::test]
     async fn test_logout_handler_no_token_return_400() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock_user, mock_banned| {
+        let app_state = create_app_state_with_mock(|mock_user, mock_banned, _, _| {
             mock_user.expect_validate_user().returning(|_, _| Ok(()));
 
             // Ensure banned token store is never called
@@ -109,7 +112,7 @@ mod tests {
     #[tokio::test]
     async fn test_logout_handler_bad_token_return_401() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock_user, mock_banned| {
+        let app_state = create_app_state_with_mock(|mock_user, mock_banned, _,_| {
             mock_user.expect_validate_user().returning(|_, _| Ok(()));
 
             // Ensure banned token store is never called
@@ -152,7 +155,7 @@ mod tests {
         let cookie = utils::auth::generate_auth_cookie(email).unwrap();
         let token_value = cookie.value().to_string();
 
-        let app_state = create_app_state_with_mock(|mock_user, mock_banned| {
+        let app_state = create_app_state_with_mock(|mock_user, mock_banned, _, _| {
             mock_user.expect_validate_user().returning(|_, _| Ok(()));
 
             // Expect the token to be banned
@@ -202,7 +205,7 @@ mod tests {
         let cookie = utils::auth::generate_auth_cookie(email).unwrap();
         let token_value = cookie.value().to_string();
 
-        let app_state = create_app_state_with_mock(|mock_user, mock_banned| {
+        let app_state = create_app_state_with_mock(|mock_user, mock_banned, _,_| {
             mock_user.expect_validate_user().returning(|_, _| Ok(()));
 
             mock_banned.expect_is_banned()
@@ -247,7 +250,7 @@ mod tests {
         let cookie = utils::auth::generate_auth_cookie(email).unwrap();
         let token_value = cookie.value().to_string();
 
-        let app_state = create_app_state_with_mock(|mock_user, mock_banned| {
+        let app_state = create_app_state_with_mock(|mock_user, mock_banned, _, _| {
             mock_user.expect_validate_user().returning(|_, _| Ok(()));
 
             mock_banned.expect_is_banned()

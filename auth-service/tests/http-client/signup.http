@@ -8,3 +8,12 @@ Content-Type: application/json
   "requires2FA": false
 }
 
+### Send POST request with json body
+POST {{baseUrl}}/{{apiBasePath}}/signup
+Content-Type: application/json
+
+{
+  "email": "2fa@example.com",
+  "password": "password123",
+  "requires2FA": true
+}

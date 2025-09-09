@@ -33,6 +33,7 @@ dotenvy.workspace = true
 tracing.workspace = true
 lazy_static.workspace = true
 askama = { workspace = true }
+rand.workspace = true
 rustls.workspace = true
 
 [dev-dependencies]
@@ -42,3 +43,4 @@ fake.workspace = true
 quickcheck.workspace = true
 quickcheck_macros.workspace = true
 serial_test.workspace = true
+rstest.workspace = true

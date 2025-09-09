@@ -57,22 +57,27 @@ mod tests {
     use fake::rand::{rng};
     use fake::Rng;
     use serde_json::Value;
-    use crate::domain::data_stores::{MockBannedTokenStore, MockUserStore, UserStoreError};
+    use crate::domain::data_stores::{MockBannedTokenStore, MockStandard2FaStore, MockUserStore, UserStoreError};
+    use crate::domain::email_client::MockEmailClient;
     use super::*;
 
     // Helper function to create app state with mock user store and banned token store
     fn create_app_state_with_mock<F>(setup: F) -> AppState
     where
-        F: FnOnce(&mut MockUserStore, &mut MockBannedTokenStore),
+        F: FnOnce(&mut MockUserStore, &mut MockBannedTokenStore, &mut MockStandard2FaStore, &mut MockEmailClient),
     {
         let mut mock_user_store = MockUserStore::new();
         let mut mock_banned_token_store = MockBannedTokenStore::new();
+        let mut mock_standard_2fa_code_store = MockStandard2FaStore::new();
+        let mut mock_email_client = MockEmailClient::new();
 
-        setup(&mut mock_user_store, &mut mock_banned_token_store);
+        setup(&mut mock_user_store, &mut mock_banned_token_store, &mut mock_standard_2fa_code_store, &mut mock_email_client);
 
         AppState {
             user_store: std::sync::Arc::new(tokio::sync::RwLock::new(mock_user_store)),
             banned_token_store: std::sync::Arc::new(tokio::sync::RwLock::new(mock_banned_token_store)),
+            standard_2fa_code_store:  std::sync::Arc::new(tokio::sync::RwLock::new(mock_standard_2fa_code_store)),
+            email_client:  std::sync::Arc::new(tokio::sync::RwLock::new(mock_email_client)),
         }
     }
 
@@ -94,7 +99,7 @@ mod tests {
     #[tokio::test]
     async fn test_signup_handler_success() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock, _| {
+        let app_state = create_app_state_with_mock(|mock, _, _,_| {
             mock.expect_add_user().returning(|_| Ok(()));
         });
 
@@ -111,7 +116,7 @@ mod tests {
     #[tokio::test]
     async fn test_signup_handler_invalid_email_format() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock, _| {
+        let app_state = create_app_state_with_mock(|mock, _, _,_| {
             mock.expect_add_user().never();
         });
 
@@ -135,7 +140,7 @@ mod tests {
     #[tokio::test]
     async fn test_signup_handler_empty_email() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock, _| {
+        let app_state = create_app_state_with_mock(|mock, _, _,_| {
             mock.expect_add_user().never();
         });
 
@@ -158,7 +163,7 @@ mod tests {
     #[tokio::test]
     async fn test_signup_handler_password_too_short() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock, _| {
+        let app_state = create_app_state_with_mock(|mock, _, _,_| {
             mock.expect_add_user().never();
         });
 
@@ -181,7 +186,7 @@ mod tests {
     #[tokio::test]
     async fn test_signup_handler_password_too_long() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock, _| {
+        let app_state = create_app_state_with_mock(|mock, _, _,_| {
             mock.expect_add_user().never();
         });
 
@@ -205,7 +210,7 @@ mod tests {
     #[tokio::test]
     async fn test_signup_handler_multiple_validation_errors() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock, _| {
+        let app_state = create_app_state_with_mock(|mock, _, _,_| {
             mock.expect_add_user().never();
         });
 
@@ -232,7 +237,7 @@ mod tests {
     #[tokio::test]
     async fn test_signup_handler_password_exactly_8_chars() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock, _| {
+        let app_state = create_app_state_with_mock(|mock, _, _,_| {
             mock.expect_add_user().returning(|_| Ok(()));
         });
 
@@ -249,7 +254,7 @@ mod tests {
     #[tokio::test]
     async fn test_signup_handler_password_exactly_32_chars() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock, _| {
+        let app_state = create_app_state_with_mock(|mock, _, _,_| {
             mock.expect_add_user().returning(|_| Ok(()));
         });
 
@@ -281,7 +286,7 @@ mod tests {
         ];
 
         for email in valid_emails {
-            let app_state = create_app_state_with_mock(|mock, _| {
+            let app_state = create_app_state_with_mock(|mock, _, _,_| {
                 mock.expect_add_user().returning(|_| Ok(()));
             });
 
@@ -307,7 +312,7 @@ mod tests {
         ];
 
         for email in invalid_emails {
-            let app_state = create_app_state_with_mock(|mock, _| {
+            let app_state = create_app_state_with_mock(|mock, _, _,_| {
                 mock.expect_add_user().never();
             });
 
@@ -325,7 +330,7 @@ mod tests {
     #[tokio::test]
     async fn test_signup_handler_with_2fa_enabled() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock, _| {
+        let app_state = create_app_state_with_mock(|mock, _, _,_| {
             mock.expect_add_user()
                 .withf(|user| user.get_requires2fa() == true)
                 .returning(|_| Ok(()));
@@ -344,7 +349,7 @@ mod tests {
     #[tokio::test]
     async fn test_signup_handler_user_already_exists() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock, _| {
+        let app_state = create_app_state_with_mock(|mock, _, _,_| {
             mock.expect_add_user()
                 .returning(|_| Err(UserStoreError::UserAlreadyExists));
         });
@@ -396,7 +401,7 @@ mod tests {
     #[tokio::test]
     async fn test_signup_handler_multiple_validation_errors_password_only_letters_email_invalid() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock, _| {
+        let app_state = create_app_state_with_mock(|mock, _, _,_| {
             mock.expect_add_user().never();
         });
 
@@ -423,7 +428,7 @@ mod tests {
     #[tokio::test]
     async fn test_signup_handler_unexpected_error_from_database_for_500_response() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock, _| {
+        let app_state = create_app_state_with_mock(|mock, _, _,_| {
             mock.expect_add_user()
                 .returning(|_| Err(UserStoreError::UnexpectedError));
         });

@@ -34,15 +34,16 @@ email_address = { version = "0.2" }
 jsonwebtoken = { version = "9" }
 chrono = { version = "0.4" }
 dotenvy = { version = "0.15" }
-lazy_static = { version = "1"}
+lazy_static = { version = "1" }
 tracing = "0.1"
 
 # Libs for testing
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
-hyper = { version = "1.7", features = ["full"]}
+hyper = { version = "1.7", features = ["full"] }
 mockall = { version = "0.13" }
 fake = { version = "4.4", features = ["derive"] }
 rand = { version = "0.9" }
 quickcheck = { version = "1" }
 quickcheck_macros = { version = "1" }
-serial_test = {version = "3" }
+serial_test = { version = "3" }
+rstest = { version = "0.26" }

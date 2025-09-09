@@ -63,23 +63,28 @@ mod tests {
     use crate::domain::types::Email;
     use chrono::{Duration, Utc};
     use jsonwebtoken::{encode, EncodingKey};
-    use crate::domain::data_stores::{MockBannedTokenStore, MockUserStore};
+    use crate::domain::data_stores::{MockBannedTokenStore, MockStandard2FaStore, MockUserStore};
+    use crate::domain::email_client::MockEmailClient;
     use crate::utils::auth::Claims;
     use crate::utils::constants::JWT_SECRET;
 
     // Helper function to create app state with mock user store and banned token store
     fn create_app_state_with_mock<F>(setup: F) -> AppState
     where
-        F: FnOnce(&mut MockUserStore, &mut MockBannedTokenStore),
+        F: FnOnce(&mut MockUserStore, &mut MockBannedTokenStore, &mut MockStandard2FaStore, &mut MockEmailClient),
     {
         let mut mock_user_store = MockUserStore::new();
         let mut mock_banned_token_store = MockBannedTokenStore::new();
+        let mut mock_standard_2fa_code_store = MockStandard2FaStore::new();
+        let mut mock_email_client = MockEmailClient::new();
 
-        setup(&mut mock_user_store, &mut mock_banned_token_store);
+        setup(&mut mock_user_store, &mut mock_banned_token_store, &mut mock_standard_2fa_code_store, &mut mock_email_client);
 
         AppState {
             user_store: std::sync::Arc::new(tokio::sync::RwLock::new(mock_user_store)),
             banned_token_store: std::sync::Arc::new(tokio::sync::RwLock::new(mock_banned_token_store)),
+            standard_2fa_code_store:  std::sync::Arc::new(tokio::sync::RwLock::new(mock_standard_2fa_code_store)),
+            email_client:  std::sync::Arc::new(tokio::sync::RwLock::new(mock_email_client)),
         }
     }
 
@@ -100,7 +105,7 @@ mod tests {
     #[tokio::test]
     async fn test_verify_token_handler_valid_token_returns_200() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock_user, mock_banned| {
+        let app_state = create_app_state_with_mock(|mock_user, mock_banned, mock_2fa_code,_| {
             mock_user.expect_validate_user().returning(|_, _| Ok(()));
 
             // Expect the token not to be banned
@@ -113,6 +118,9 @@ mod tests {
                 .never();
             mock_banned
                 .expect_ban_with_ttl()
+                .never();
+            mock_2fa_code
+                .expect_has_active_2fa_code()
                 .never();
         });
         let email = &Email::try_from("user@example.com").unwrap();
@@ -129,7 +137,7 @@ mod tests {
     #[tokio::test]
     async fn test_verify_token_handler_invalid_token_returns_422() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock_user, mock_banned| {
+        let app_state = create_app_state_with_mock(|mock_user, mock_banned, mock_2fa_code, _| {
             mock_user.expect_validate_user().returning(|_, _| Ok(()));
 
             // Ensure banned token store is never called
@@ -138,6 +146,9 @@ mod tests {
                 .never();
             mock_banned
                 .expect_ban_with_ttl()
+                .never();
+            mock_2fa_code
+                .expect_has_active_2fa_code()
                 .never();
         });
         let verify_token_request = create_verify_token_request("invalid token");
@@ -156,7 +167,7 @@ mod tests {
     #[tokio::test]
     async fn test_verify_token_handler_expired_token_returns_401() {
         // Arrange
-        let app_state = create_app_state_with_mock(|mock_user, mock_banned| {
+        let app_state = create_app_state_with_mock(|mock_user, mock_banned, mock_2fa_code, _| {
             mock_user.expect_validate_user().returning(|_, _| Ok(()));
 
             // Ensure banned token store is never called
@@ -165,6 +176,9 @@ mod tests {
                 .never();
             mock_banned
                 .expect_ban_with_ttl()
+                .never();
+            mock_2fa_code
+                .expect_has_active_2fa_code()
                 .never();
         });
 

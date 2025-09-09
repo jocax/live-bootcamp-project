@@ -25,12 +25,39 @@ impl LoginRequest {
     }
 }
 
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum LoginResponse {
+RegularAuth,
+TwoFactorAuth(Login2FaRequiredResponse),
+}
+
+
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug)]
-pub struct LoginResponse {}
+pub struct RegularAuth {}
 
-impl LoginResponse {
+impl RegularAuth {
     pub fn new() -> Self {
         Self {}
+    }
+}
+
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(Debug)]
+#[derive(PartialEq)]
+pub struct Login2FaRequiredResponse {
+    pub message: String,
+    #[serde(rename = "loginAttemptId")]
+    pub login_attempt_id: String,
+}
+
+impl Login2FaRequiredResponse {
+    pub fn new(message: String, login_attempt_id: String) -> Self {
+        Self {
+            message,
+            login_attempt_id,
+        }
     }
 }

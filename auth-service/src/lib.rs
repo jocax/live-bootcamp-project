@@ -5,23 +5,24 @@ pub mod services;
 pub mod utils;
 pub mod validations;
 
-use crate::domain::data_stores::{BannedTokenStore, UserStore};
+use crate::domain::data_stores::{BannedTokenStore, Standard2FaStore, UserStore};
+use crate::domain::email_client::EmailClient;
 use crate::routes::login::login_handler;
 use crate::routes::logout::logout_handler;
 use crate::routes::signup::signup_handler;
 use crate::routes::verify_2fa::verify_2fa_handler;
 use crate::routes::verify_token::verify_token_handler;
+use askama::Template;
 use axum::http::{header, Method, StatusCode};
 use axum::response::{Html, IntoResponse};
 use axum::routing::{get, post};
 use axum::Router;
 use axum_server::tls_rustls::RustlsConfig;
+use std::env;
 use std::error::Error;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::{env};
-use askama::Template;
 use tokio::sync::RwLock;
 use tower_http::cors::AllowOrigin;
 use tower_http::{cors::CorsLayer, services::ServeDir};
@@ -36,7 +37,6 @@ pub struct Application {
 
 impl Application {
     pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
-
         println!("Build with address: {:?}", address);
 
         let droplet_id = get_droplet_id();
@@ -130,12 +130,9 @@ fn get_tls_config() -> bool {
 }
 
 async fn root() -> impl IntoResponse {
+    let base_url = get_base_url();
 
-let base_url = get_base_url();
-
-    let template = IndexTemplate {
-        base_url,
-    };
+    let template = IndexTemplate { base_url };
 
     Html(template.render().unwrap())
 }
@@ -143,16 +140,12 @@ async fn favicon() -> impl IntoResponse {
     let path = format!("{}/favicon.ico", get_assets_path().to_str().unwrap());
 
     match std::fs::read(path) {
-        Ok(icon) => (
-            [("Content-Type", "image/x-icon")],
-            icon
-        ).into_response(),
+        Ok(icon) => ([("Content-Type", "image/x-icon")], icon).into_response(),
         Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
 }
 
 fn create_router(app_state: AppState, cors_layer: CorsLayer) -> Router {
-
     let assets_path = get_assets_path();
 
     let auth_router = Router::new()
@@ -167,8 +160,7 @@ fn create_router(app_state: AppState, cors_layer: CorsLayer) -> Router {
         .with_state(app_state)
         .layer(cors_layer);
 
-        auth_router
-
+    auth_router
 }
 
 fn create_cors_layer(allowed_origins: AllowOrigin) -> CorsLayer {
@@ -184,16 +176,30 @@ fn create_cors_layer(allowed_origins: AllowOrigin) -> CorsLayer {
 // Using a type alias to improve readability!
 pub type UserStoreType = Arc<RwLock<dyn UserStore>>;
 pub type BannedTokenStoreType = Arc<RwLock<dyn BannedTokenStore>>;
+pub type Standard2FACodeStoreType = Arc<RwLock<dyn Standard2FaStore>>;
+pub type EmailClientType = Arc<RwLock<dyn EmailClient>>;
 
 #[derive(Clone)]
 pub struct AppState {
     pub user_store: UserStoreType,
     pub banned_token_store: BannedTokenStoreType,
+    pub standard_2fa_code_store: Standard2FACodeStoreType,
+    pub email_client: EmailClientType,
 }
 
 impl AppState {
-    pub fn new(user_store: UserStoreType, banned_token_store: BannedTokenStoreType) -> Self {
-        Self { user_store, banned_token_store }
+    pub fn new(
+        user_store: UserStoreType,
+        banned_token_store: BannedTokenStoreType,
+        standard_2fa_code_store: Standard2FACodeStoreType,
+        email_client: EmailClientType,
+    ) -> Self {
+        Self {
+            user_store,
+            banned_token_store,
+            standard_2fa_code_store,
+            email_client,
+        }
     }
 }
 

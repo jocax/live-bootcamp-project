@@ -1,13 +1,20 @@
+use crate::api::{helpers, TestApp};
 use auth_service::api::error::{ErrorResponse, ValidationErrorResponse};
 use auth_service::api::signup::SignUpRequest;
-use crate::api::{helpers, TestApp};
 
 #[tokio::test]
 async fn signup_should_return_201() {
-
     let user_store_type = helpers::create_user_store_type();
     let banned_token_store_type = helpers::create_banned_toke_store_type();
-    let app = TestApp::new(user_store_type, banned_token_store_type).await;
+    let standard_2fa_code_store_type = helpers::create_standard_2fa_code_store_type();
+    let stdout_email_client_type = helpers::create_stdout_email_client_type();
+    let app = TestApp::new(
+        user_store_type,
+        banned_token_store_type,
+        standard_2fa_code_store_type,
+        stdout_email_client_type,
+    )
+    .await;
 
     let signup_request = SignUpRequest::new(
         "test@example.com".to_string(),
@@ -25,19 +32,24 @@ async fn signup_should_return_201() {
 
 #[tokio::test]
 async fn should_return_422_if_malformed_input_json() {
-
     let user_store_type = helpers::create_user_store_type();
     let banned_token_store_type = helpers::create_banned_toke_store_type();
-    let app = TestApp::new(user_store_type, banned_token_store_type).await;
+    let standard_2fa_code_store_type = helpers::create_standard_2fa_code_store_type();
+    let stdout_email_client_type = helpers::create_stdout_email_client_type();
+    let app = TestApp::new(
+        user_store_type,
+        banned_token_store_type,
+        standard_2fa_code_store_type,
+        stdout_email_client_type,
+    )
+    .await;
 
     let random_email = TestApp::get_random_email().await;
 
-    let test_cases = [
-        serde_json::json!({
-            "email": random_email,
-            "requires2fa": true
-        }),
-    ];
+    let test_cases = [serde_json::json!({
+        "email": random_email,
+        "requires2fa": true
+    })];
 
     for test_case in test_cases.iter() {
         let response = app.post_signup_body(&test_case).await;
@@ -52,10 +64,17 @@ async fn should_return_422_if_malformed_input_json() {
 
 #[tokio::test]
 async fn should_return_409_if_email_already_exists() {
-
     let user_store_type = helpers::create_user_store_type();
     let banned_token_store_type = helpers::create_banned_toke_store_type();
-    let app = TestApp::new(user_store_type, banned_token_store_type).await;
+    let standard_2fa_code_store_type = helpers::create_standard_2fa_code_store_type();
+    let stdout_email_client_type = helpers::create_stdout_email_client_type();
+    let app = TestApp::new(
+        user_store_type,
+        banned_token_store_type,
+        standard_2fa_code_store_type,
+        stdout_email_client_type,
+    )
+    .await;
 
     let signup_request = SignUpRequest::new(
         "test@example.com".to_string(),
@@ -78,27 +97,42 @@ async fn should_return_409_if_email_already_exists() {
     );
 
     assert_eq!(
-        response.json::<ErrorResponse>()
+        response
+            .json::<ErrorResponse>()
             .await
             .expect("Could not deserialize response body to ErrorResponse")
             .get_error(),
         "User already exists"
     )
-
 }
 
 #[tokio::test]
 async fn should_return_400_if_malformed_input_entity() {
-
     let user_store_type = helpers::create_user_store_type();
     let banned_token_store_type = helpers::create_banned_toke_store_type();
-    let app = TestApp::new(user_store_type, banned_token_store_type).await;
+    let standard_2fa_code_store_type = helpers::create_standard_2fa_code_store_type();
+    let stdout_email_client_type = helpers::create_stdout_email_client_type();
+    let app = TestApp::new(
+        user_store_type,
+        banned_token_store_type,
+        standard_2fa_code_store_type,
+        stdout_email_client_type,
+    )
+    .await;
 
     let test_cases = [
-        SignUpRequest::new("user@example@".to_string(), "password123".to_string(), false),
-        SignUpRequest::new("bad_email_format".to_string(), "password123".to_string(), false),
+        SignUpRequest::new(
+            "user@example@".to_string(),
+            "password123".to_string(),
+            false,
+        ),
+        SignUpRequest::new(
+            "bad_email_format".to_string(),
+            "password123".to_string(),
+            false,
+        ),
         SignUpRequest::new("user@example.com".to_string(), "1234567".to_string(), false),
-        SignUpRequest::new("user@example.com".to_string(), "".to_string(), false)
+        SignUpRequest::new("user@example.com".to_string(), "".to_string(), false),
     ];
 
     for test_case in test_cases.iter() {
