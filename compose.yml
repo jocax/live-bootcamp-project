@@ -17,7 +17,7 @@ services:
   app-service:
     extra_hosts:
       # or if nginx is in a container:
-      - "live-bootcamp.local:host-gateway"  # Special Docker keyword that resolves to host
+      - "live-bootcamp.jocax.com:host-gateway"  # Special Docker keyword that resolves to host
     image: dev4ever/rust-bootcamp-app-service # specify name of image on Docker Hub
     restart: "always" # automatically restart container when server crashes
     environment: # set up environment variables
