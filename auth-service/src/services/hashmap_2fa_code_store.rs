@@ -337,6 +337,28 @@ mod tests {
         assert!(store.verify_and_consume_2fa_code(&email, "ABC123").await.is_ok());
     }
 
+    #[tokio::test]
+    async fn test_verify_and_consume_twice_valid_code_must_fail() {
+        let mut store = HashMapStandard2FaStore::new();
+        let email = test_email("user@example.com");
+        let code = "ABC123".to_string();
+
+        // Store code
+        store.store_2fa_code(&email, code.clone(), 300).await.unwrap();
+
+        // Verify and consume
+        assert!(store.verify_and_consume_2fa_code(&email, &code).await.is_ok());
+
+        // Verify code is consumed (no longer active)
+        assert!(!store.has_active_2fa_code(&email).await.unwrap().is_some());
+
+        // Verify same code can't be used again
+        assert_eq!(
+            store.verify_and_consume_2fa_code(&email, &code).await.unwrap_err(),
+            Standard2FaError::NotFound
+        );
+    }
+
 }
 
 

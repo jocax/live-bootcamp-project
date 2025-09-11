@@ -1,7 +1,7 @@
+use crate::domain::types::Email;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
-use crate::domain::types::{Email};
 
 #[derive(Serialize, Deserialize, Derivative, Validate)]
 #[derivative(Debug)]
@@ -13,7 +13,7 @@ pub struct LoginRequest {
 
 impl LoginRequest {
     pub fn new(email: Email, password: String) -> Self {
-        Self { email,  password }
+        Self { email, password }
     }
 
     pub fn get_email(&self) -> &Email {
@@ -25,14 +25,12 @@ impl LoginRequest {
     }
 }
 
-
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum LoginResponse {
-RegularAuth,
-TwoFactorAuth(Login2FaRequiredResponse),
+    RegularAuth(LoginRegularAuthResponse),
+    TwoFactorAuth(Login2FaRequiredResponse),
 }
-
 
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug)]
@@ -58,6 +56,23 @@ impl Login2FaRequiredResponse {
         Self {
             message,
             login_attempt_id,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(Debug)]
+#[derive(PartialEq)]
+pub struct LoginRegularAuthResponse {
+    success: bool,
+    redirect_url: String,
+}
+
+impl LoginRegularAuthResponse {
+    pub fn new(success: bool, redirect_url: String) -> Self {
+        Self {
+            success,
+            redirect_url,
         }
     }
 }

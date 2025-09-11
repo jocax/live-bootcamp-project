@@ -7,6 +7,7 @@ use axum::response::IntoResponse;
 use serde::de::DeserializeOwned;
 use validator::{ValidationErrors};
 use crate::api::error::{AuthAPIError, ValidationErrorResponse};
+use crate::domain::data_stores::Standard2FaError;
 use crate::services::hashmap_user_store::UserStoreError;
 
 pub fn map_to_response<T>(status_code: StatusCode, headers: Option<HeaderMap>, data: T) -> impl IntoResponse
@@ -24,6 +25,13 @@ pub fn map_user_store_error_to_response(error: UserStoreError) -> AuthAPIError {
         UserStoreError::UnexpectedError => AuthAPIError::UnexpectedError,
     };
     auth_api_error
+}
+
+pub fn map_standard_2fa_error_to_response(error: Standard2FaError) -> AuthAPIError {
+    let standard_2fa_error = match error {
+        _ => AuthAPIError::InvalidCredentials,
+    };
+    standard_2fa_error
 }
 
 // Improved validation error mapping function

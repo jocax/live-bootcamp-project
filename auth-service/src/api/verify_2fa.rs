@@ -42,4 +42,16 @@ impl Verify2FARequest {
 
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug)]
-pub struct Verify2FAResponse {}
+pub struct Verify2FAResponse {
+    success: bool,
+    redirect_url: String
+}
+
+impl Verify2FAResponse {
+    pub fn new(success: bool, redirect_url: String) -> Self {
+        Self {
+            success,
+            redirect_url
+        }
+    }
+}

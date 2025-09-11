@@ -58,17 +58,15 @@ loginButton.addEventListener("click", (e) => {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({email, password}),
     }).then(response => {
         if (response.status === 206) {
             TwoFAForm.email.value = email;
             response.json().then(data => {
                 TwoFAForm.login_attempt_id.value = data.loginAttemptId;
             });
-
             loginForm.email.value = "";
             loginForm.password.value = "";
-
             loginSection.style.display = "none";
             twoFASection.style.display = "block";
             signupSection.style.display = "none";
@@ -77,7 +75,16 @@ loginButton.addEventListener("click", (e) => {
             loginForm.email.value = "";
             loginForm.password.value = "";
             loginErrAlter.style.display = "none";
-            alert("You have successfully logged in.");
+            response.json().then(data => {
+                // Clear form fields
+                loginForm.email.value = "";
+                loginForm.password.value = "";
+                loginErrAlter.style.display = "none";
+                if (data.success && data.redirect_url) {
+                    alert("You have successfully logged in.");
+                    window.location.href = data.redirect_url;
+                }
+            });
         } else {
             response.json().then(data => {
                 let error_msg = data.error;
@@ -108,7 +115,7 @@ signupButton.addEventListener("click", (e) => {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, requires2FA }),
+        body: JSON.stringify({email, password, requires2FA}),
     }).then(response => {
         if (response.ok) {
             signupForm.email.value = "";
@@ -149,17 +156,28 @@ TwoFAButton.addEventListener("click", (e) => {
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, loginAttemptId, "2FACode": TwoFACode }),
+        body: JSON.stringify({email, loginAttemptId, "2FACode": TwoFACode}),
     }).then(response => {
         if (response.ok) {
-            TwoFAForm.email.value = "";
-            TwoFAForm.email_code.value = "";
-            TwoFAForm.login_attempt_id.value = "";
-            TwoFAErrAlter.style.display = "none";
-            alert("You have successfully logged in.");
-            loginSection.style.display = "block";
-            twoFASection.style.display = "none";
-            signupSection.style.display = "none";
+            return response.json().then(data => {
+                // Clear form fields
+                TwoFAForm.email.value = "";
+                TwoFAForm.email_code.value = "";
+                TwoFAForm.login_attempt_id.value = "";
+                TwoFAErrAlter.style.display = "none";
+
+                // Check if redirect is needed
+                if (data.success && data.redirect_url) {
+                    alert("You have successfully logged in.");
+                    window.location.href = data.redirect_url;
+                } else {
+                    // Fallback: show login section
+                    alert("You have successfully logged in.");
+                    loginSection.style.display = "block";
+                    twoFASection.style.display = "none";
+                    signupSection.style.display = "none";
+                }
+            });
         } else {
             response.json().then(data => {
                 let error_msg = data.error;

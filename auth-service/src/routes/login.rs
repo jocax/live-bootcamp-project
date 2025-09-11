@@ -1,5 +1,5 @@
 use crate::api::error::AuthAPIError;
-use crate::api::login::{Login2FaRequiredResponse, LoginRequest, LoginResponse};
+use crate::api::login::{Login2FaRequiredResponse, LoginRegularAuthResponse, LoginRequest, LoginResponse};
 use crate::routes::helper::{map_user_store_error_to_response, map_validation_errors_to_response, ValidatedJson};
 use crate::{utils, AppState, EmailClientType, Standard2FACodeStoreType};
 use axum::extract::State;
@@ -154,7 +154,9 @@ fn handle_no_2fa(cookie_jar: CookieJar, email: &Email) -> Result<LoginResponseTy
         StatusCode::OK,
         headers,
         updated_cookie_jar,
-        Json::from(LoginResponse::RegularAuth)
+        Json::from(LoginResponse::RegularAuth(
+            LoginRegularAuthResponse::new(true, "/app".to_string())
+        ))
     ))
 }
 
@@ -217,7 +219,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_login_handler() {
+    async fn test_login_handler_200_successful() {
         let user = User::new(
             Email::try_from("user@example.com").unwrap(),
             Password::try_from("password123").unwrap(),
@@ -268,6 +270,11 @@ mod tests {
         // Validate JWT structure (3 parts separated by dots)
         let parts: Vec<&str> = token.split('.').collect();
         assert_eq!(parts.len(), 3, "JWT should have 3 parts");
+
+        let response_body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let login_response: LoginResponse = serde_json::from_slice(&response_body).unwrap();
+        assert_eq!(login_response, LoginResponse::RegularAuth(LoginRegularAuthResponse::new(true, "/app".to_string())));
+
     }
 
     #[tokio::test]
