@@ -1,5 +1,5 @@
 use crate::api::{helpers, TestApp};
-use auth_service::api::login::{Login2FaRequiredResponse, LoginRequest, LoginResponse};
+use auth_service::api::login::{LoginRegularAuthResponse, LoginRequest, LoginResponse};
 use auth_service::domain::types::{Email, Password};
 use auth_service::domain::user::User;
 use auth_service::utils;
@@ -206,6 +206,10 @@ async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
     println!("{:?}", claims);
 
     assert_eq!(claims.sub, "test@example.com");
+    
+    let body: LoginRegularAuthResponse = response.json().await.unwrap();
+    assert!(body.success);
+    assert_eq!(body.redirect_url, "/app")
 }
 
 #[tokio::test]

@@ -3,10 +3,18 @@ use auth_service::api::verify_2fa::Verify2FARequest;
 use auth_service::domain::types::Email;
 
 #[tokio::test]
-async fn test_verify_2fa() {
+async fn test_verify_2fa_with_successful_and_response_200() {
+
+    //
+    let email_value = "user@example.com";
+    let email = &Email::try_from(email_value).unwrap();
+    let code = "123456";
+
+    let standard_2fa_code_store_type = helpers::create_standard_2fa_code_store_type();
+    let attempt_id = standard_2fa_code_store_type.write().await.store_2fa_code(email, code.to_string(), 60*5u64).await.unwrap();
+
     let user_store_type = helpers::create_user_store_type();
     let banned_token_store_type = helpers::create_banned_toke_store_type();
-    let standard_2fa_code_store_type = helpers::create_standard_2fa_code_store_type();
     let stdout_email_client_type = helpers::create_stdout_email_client_type();
     let app = TestApp::new(
         user_store_type,
@@ -18,8 +26,8 @@ async fn test_verify_2fa() {
 
     let verify_2fa_request = Verify2FARequest::new(
         Email::try_from("user@example.com").unwrap(),
-        "my_attempt_id_uuid".to_string(),
-        "my-verify-token".to_string());
+        attempt_id.clone(),
+        code.to_string(),);
 
     let response = app.post_verify2fa(&verify_2fa_request).await;
     assert_eq!(response.status().as_u16(), 200);
@@ -46,6 +54,6 @@ async fn test_verify_2fa() {
     let cookie_str = jwt_cookie.to_str().unwrap();
     assert!(cookie_str.contains("HttpOnly"));
     assert!(cookie_str.contains("Path=/"));
-    assert!(cookie_str.contains("jwt=my-verified-token"));
+    assert!(cookie_str.starts_with("jwt="));
     assert!(cookie_str.contains("SameSite=Lax"));
 }

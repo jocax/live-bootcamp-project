@@ -64,8 +64,8 @@ impl Login2FaRequiredResponse {
 #[derivative(Debug)]
 #[derive(PartialEq)]
 pub struct LoginRegularAuthResponse {
-    success: bool,
-    redirect_url: String,
+    pub success: bool,
+    pub redirect_url: String,
 }
 
 impl LoginRegularAuthResponse {

@@ -5,7 +5,7 @@ use crate::routes::helper::{
 };
 use crate::{utils, AppState};
 use axum::extract::State;
-use axum::http::header::{CONTENT_TYPE, SET_COOKIE};
+use axum::http::header::{CONTENT_TYPE};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
@@ -98,6 +98,7 @@ pub async fn verify_2fa_handler(
 
 #[cfg(test)]
 mod tests {
+    use axum::http::header::SET_COOKIE;
     use super::*;
     use crate::domain::data_stores::{MockBannedTokenStore, MockStandard2FaStore, MockUserStore, Standard2FaInfo};
     use crate::domain::email_client::MockEmailClient;
