@@ -5,6 +5,7 @@ use std::env as std_env;
 lazy_static! {
     pub static ref JWT_SECRET: String = set_token();
     pub static ref DROPLET_ID: String = set_droplet_ip();
+    pub static ref DATABASE_URL: String = set_database_url();
 }
 
 fn set_token() -> String {
@@ -25,11 +26,22 @@ fn set_droplet_ip() -> String {
     secret
 }
 
+fn set_database_url() -> String {
+    dotenv().ok(); // Load environment variables
+    let secret = std_env::var(env::DATABASE_URL_ENV_VAR).expect("DATABASE_URL must be set.");
+    if secret.is_empty() {
+        panic!("DATABASE_URL must not be empty.");
+    }
+    secret
+}
+
 
 
 pub mod env {
     pub const JWT_SECRET_ENV_VAR: &str = "JWT_SECRET";
     pub const DROPLET_IP_ENV_VAR: &str = "DROPLET_IP";
+    pub const DATABASE_URL_ENV_VAR: &str = "DATABASE_URL";
+
 }
 
 pub const JWT_COOKIE_NAME: &str = "jwt";
@@ -47,7 +59,7 @@ mod tests {
     use super::*;
     use std::panic;
     use serial_test::serial;
-    use crate::utils::constants::env::JWT_SECRET_ENV_VAR;
+    use crate::utils::constants::env::{DATABASE_URL_ENV_VAR, JWT_SECRET_ENV_VAR};
 
     // Helper function to safely set and restore environment variables
     fn with_env_var<F>(key: &str, value: Option<&str>, test: F)
@@ -162,4 +174,15 @@ mod tests {
         // Clean up
         let _ = fs::remove_file(".env.test");
     }
+
+
+    #[test]
+    #[serial]
+    fn test_set_database_url_with_valid_secret() {
+        with_env_var(DATABASE_URL_ENV_VAR, Some("postgres://postgres:password123@db:5432"), || {
+            let result = set_database_url();
+            assert_eq!(result, "postgres://postgres:password123@db:5432");
+        });
+    }
+
 }

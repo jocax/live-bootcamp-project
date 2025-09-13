@@ -23,6 +23,8 @@ use std::error::Error;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
+use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 use tokio::sync::RwLock;
 use tower_http::cors::AllowOrigin;
 use tower_http::{cors::CorsLayer, services::ServeDir};
@@ -220,6 +222,11 @@ fn get_droplet_id() -> String {
 
 fn get_base_url() -> String {
     env::var("BASE_URL").unwrap_or("http://localhost:8001".to_owned())
+}
+
+pub async fn get_postgres_pool(url: &str) -> Result<PgPool, sqlx::Error> {
+    // Create a new PostgreSQL connection pool
+    PgPoolOptions::new().max_connections(5).connect(url).await
 }
 
 #[derive(Template)]
