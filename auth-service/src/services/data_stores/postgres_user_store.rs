@@ -50,6 +50,7 @@ impl UserStore for PostgresUserStore {
     }
 
     async fn get_user(&self, email: &Email) -> Result<User, UserStoreError> {
+
         let row: UserRow = sqlx::query_as!(
             UserRow,
             "SELECT email, password_hash, requires_2fa FROM users WHERE email = $1",
@@ -82,4 +83,9 @@ impl From<sqlx::Error> for UserStoreError {
             _ => UserStoreError::UnexpectedError,
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    //WE USE COMPILE TIME CHECKING FOR THE SQL AND TEST CONTAINERS IN ITESTS
 }
