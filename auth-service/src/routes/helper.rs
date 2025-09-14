@@ -8,7 +8,7 @@ use serde::de::DeserializeOwned;
 use validator::{ValidationErrors};
 use crate::api::error::{AuthAPIError, ValidationErrorResponse};
 use crate::domain::data_stores::Standard2FaError;
-use crate::services::hashmap_user_store::UserStoreError;
+use crate::services::data_stores::hashmap_user_store::UserStoreError;
 
 pub fn map_to_response<T>(status_code: StatusCode, headers: Option<HeaderMap>, data: T) -> impl IntoResponse
 where

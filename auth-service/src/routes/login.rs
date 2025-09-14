@@ -40,7 +40,7 @@ pub async fn login_handler(
     let password_validation_result = app_state.user_store
         .read()
         .await
-        .validate_user(email, password.as_ref());
+        .validate_user(email, password.as_ref()).await;
 
     let password_validation = match password_validation_result {
         Ok(_) => true,

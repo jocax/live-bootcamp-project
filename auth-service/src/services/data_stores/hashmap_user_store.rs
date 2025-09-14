@@ -61,7 +61,7 @@ impl UserStore for HashMapUserStore {
         self.get_user(email)
     }
 
-    fn validate_user(&self, email: &Email, password: &str) -> Result<(), UserStoreError> {
+    async fn validate_user(&self, email: &Email, password: &str) -> Result<(), UserStoreError> {
         self.validate_user(email, password)
     }
 }

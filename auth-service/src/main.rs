@@ -3,7 +3,7 @@ use sqlx::{PgPool};
 use tokio::sync::RwLock;
 use auth_service::{get_postgres_pool, AppState, Application, BannedTokenStoreType, EmailClientType, Standard2FACodeStoreType, UserStoreType};
 use auth_service::services::{HashMapBannedTokenStore, HashMapUserStore, StdoutEmailClient};
-use auth_service::services::hashmap_2fa_code_store::HashMapStandard2FaStore;
+use auth_service::services::data_stores::hashmap_2fa_code_store::HashMapStandard2FaStore;
 use auth_service::utils::constants::{prod, DATABASE_URL};
 
 #[tokio::main]

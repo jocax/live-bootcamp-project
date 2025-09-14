@@ -11,6 +11,8 @@ FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
+# ENABLE OFFLINE MODE SQLX
+ENV SQLX_OFFLINE true
 RUN cargo build --release --bin auth-service
 
 FROM debian:bookworm-slim AS runtime

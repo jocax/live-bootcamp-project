@@ -7,7 +7,7 @@ use crate::domain::user::User;
 pub trait UserStore: Send + Sync + std::fmt::Debug {
     async fn add_user(&mut self, user: User) -> Result<(), UserStoreError>;
     async fn get_user(&self, email: &Email) -> Result<User, UserStoreError>;
-    fn validate_user(&self, email: &Email, password: &str) -> Result<(), UserStoreError>;
+    async fn validate_user(&self, email: &Email, password: &str) -> Result<(), UserStoreError>;
 }
 
 

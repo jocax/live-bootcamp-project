@@ -16,7 +16,7 @@ use auth_service::domain::data_stores::{BannedTokenStore, Standard2FaStore, User
 use auth_service::services::{HashMapBannedTokenStore, HashMapUserStore, StdoutEmailClient};
 use reqwest::cookie::Jar;
 use auth_service::domain::email_client::EmailClient;
-use auth_service::services::hashmap_2fa_code_store::HashMapStandard2FaStore;
+use auth_service::services::data_stores::hashmap_2fa_code_store::HashMapStandard2FaStore;
 use auth_service::utils::constants::JWT_SECRET;
 
 pub struct TestApp {

@@ -48,3 +48,5 @@ quickcheck = { version = "1" }
 quickcheck_macros = { version = "1" }
 serial_test = { version = "3" }
 rstest = { version = "0.26" }
+testcontainers = { version = "0.25.0"}
+testcontainers-modules = { version = "0.13", features = ["postgres", "blocking"] }

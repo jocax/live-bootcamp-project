@@ -45,3 +45,5 @@ quickcheck.workspace = true
 quickcheck_macros.workspace = true
 serial_test.workspace = true
 rstest.workspace = true
+testcontainers.workspace = true
+testcontainers-modules.workspace = true

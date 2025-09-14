@@ -30,6 +30,11 @@ pub struct Email {
     )]
     value: String
 }
+impl Email {
+    pub fn as_str(&self) -> &str {
+        &self.value
+    }
+}
 
 impl AsRef<str> for Email {
     fn as_ref(&self) -> &str {
@@ -85,7 +90,11 @@ pub struct Password {
     )]
     value: String
 }
-
+impl Password {
+    pub fn as_str(&self) -> &str {
+        &self.value
+    }
+}
 impl AsRef<str> for Password {
     fn as_ref(&self) -> &str {
         &self.value
