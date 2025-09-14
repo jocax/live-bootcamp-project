@@ -28,6 +28,7 @@ async fn test_verify_token() {
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        None
     )
     .await;
 
@@ -70,7 +71,8 @@ async fn should_return_401_if_malformed_input_token_has_expired() {
         user_store_type,
         banned_token_store_type,
         standard_2fa_code_store_type,
-        stdout_email_client_type
+        stdout_email_client_type,
+        None
     )
     .await;
 
@@ -103,7 +105,8 @@ async fn should_return_400_if_malformed_input_token_has_expired() {
         user_store_type,
         banned_token_store_type,
         standard_2fa_code_store_type,
-        stdout_email_client_type
+        stdout_email_client_type,
+        None
     )
     .await;
 

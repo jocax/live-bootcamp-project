@@ -10,7 +10,8 @@ async fn root_returns_auth_ui() {
         user_store_type,
         banned_token_store_type,
         standard_2fa_code_store_type,
-        stdout_email_client_type
+        stdout_email_client_type,
+        None
     )
     .await;
 

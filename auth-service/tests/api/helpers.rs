@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::str::FromStr;
 use std::sync::Arc;
 use axum_extra::extract::cookie::Cookie;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Validation};
@@ -15,14 +16,18 @@ use uuid::Uuid;
 use auth_service::domain::data_stores::{BannedTokenStore, Standard2FaStore, UserStore};
 use auth_service::services::{HashMapBannedTokenStore, HashMapUserStore, StdoutEmailClient};
 use reqwest::cookie::Jar;
+use sqlx::{Connection, Executor, PgConnection};
+use sqlx::postgres::{PgConnectOptions};
 use auth_service::domain::email_client::EmailClient;
 use auth_service::services::data_stores::hashmap_2fa_code_store::HashMapStandard2FaStore;
-use auth_service::utils::constants::JWT_SECRET;
+use auth_service::utils::constants::{DATABASE_URL, JWT_SECRET};
 
 pub struct TestApp {
     pub address: String,
     pub cookie_jar: Arc<Jar>,
     pub http_client: reqwest::Client,
+    pub db_name: Option<String>,
+    pub cleanup_called: bool,
 }
 
 impl TestApp {
@@ -49,6 +54,7 @@ impl TestApp {
         banned_token_store: BannedTokenStoreType,
         standard_2fa_store: Standard2FACodeStoreType,
         email_client: EmailClientType,
+        db_name: Option<String>,
     ) -> Self {
 
         let app_state = AppState::new(user_store, banned_token_store, standard_2fa_store, email_client);
@@ -80,11 +86,14 @@ impl TestApp {
             .build()
             .unwrap();
 
+
         // Create new `TestApp` instance and return it
         TestApp {
             address,
             cookie_jar,
             http_client: http_client,
+            db_name,
+            cleanup_called: false,
         }
     }
 
@@ -176,6 +185,25 @@ impl TestApp {
             .await
             .expect("Failed to execute verify-token request.")
     }
+
+    pub async fn clean_up(&mut self) {
+        if self.cleanup_called {
+            return;
+        }
+        self.cleanup_called = true;
+        delete_database(self.db_name.clone()).await;
+    }
+}
+
+impl Drop for TestApp {
+    fn drop(&mut self) {
+        if !self.cleanup_called && self.db_name.is_some() {
+            panic!(
+                "TestApp::clean_up() was not called! \
+                Make sure to call app.clean_up().await at the end of each test."
+            );
+        }
+    }
 }
 
 pub fn create_user_store_type() -> Arc<RwLock<dyn UserStore>> {
@@ -245,4 +273,44 @@ pub fn create_token(claims: &HelpersClaims) -> Result<String, jsonwebtoken::erro
         &claims,
         &EncodingKey::from_secret(JWT_SECRET.as_bytes()), //same secret as in production code
     )
+}
+
+async fn delete_database(db_name: Option<String>)  {
+
+    if db_name.is_none() {
+        println!("No database name provided, skipping database cleanup.");
+        return
+    }
+
+    let postgresql_conn_url: String = DATABASE_URL.to_owned();
+
+    let connection_options = PgConnectOptions::from_str(&postgresql_conn_url)
+        .expect("Failed to parse PostgreSQL connection string");
+
+    let mut connection = PgConnection::connect_with(&connection_options)
+        .await
+        .expect("Failed to connect to Postgres");
+
+    // Kill any active connections to the database
+    connection
+        .execute(
+            format!(
+                r#"
+                SELECT pg_terminate_backend(pg_stat_activity.pid)
+                FROM pg_stat_activity
+                WHERE pg_stat_activity.datname = '{:?}'
+                  AND pid <> pg_backend_pid();
+        "#,
+                db_name
+            )
+                .as_str(),
+        )
+        .await
+        .expect("Failed to drop the database.");
+
+    // Drop the database
+    connection
+        .execute(format!(r#"DROP DATABASE IF EXISTS "{}";"#, db_name.unwrap()).as_str())
+        .await
+        .expect("Failed to drop the database");
 }

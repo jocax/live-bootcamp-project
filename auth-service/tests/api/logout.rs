@@ -16,6 +16,7 @@ async fn should_return_400_if_jwt_cookie_missing() {
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        None
     )
     .await;
 
@@ -36,6 +37,7 @@ async fn should_return_401_if_invalid_token() {
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        None
     )
     .await;
 
@@ -65,6 +67,7 @@ async fn should_return_200_valid_token() {
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        None
     )
     .await;
 

@@ -55,6 +55,8 @@ async fn test_login() {
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        None
+        
     )
     .await;
 
@@ -108,6 +110,7 @@ async fn should_return_422_if_malformed_credentials() {
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        None
     )
     .await;
 
@@ -147,6 +150,7 @@ async fn should_return_401_if_incorrect_credentials() {
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        None
     )
     .await;
 
@@ -184,6 +188,7 @@ async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        None
     )
     .await;
 
@@ -236,6 +241,7 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        None
     )
     .await;
 

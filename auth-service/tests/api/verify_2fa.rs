@@ -21,6 +21,7 @@ async fn test_verify_2fa_with_successful_and_response_200() {
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        None
     )
     .await;
 

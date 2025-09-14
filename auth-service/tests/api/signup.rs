@@ -13,6 +13,7 @@ async fn signup_should_return_201() {
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        None
     )
     .await;
 
@@ -41,6 +42,7 @@ async fn should_return_422_if_malformed_input_json() {
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        None
     )
     .await;
 
@@ -73,6 +75,7 @@ async fn should_return_409_if_email_already_exists() {
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        None
     )
     .await;
 
@@ -112,11 +115,12 @@ async fn should_return_400_if_malformed_input_entity() {
     let banned_token_store_type = helpers::create_banned_toke_store_type();
     let standard_2fa_code_store_type = helpers::create_standard_2fa_code_store_type();
     let stdout_email_client_type = helpers::create_stdout_email_client_type();
-    let app = TestApp::new(
+    let mut app = TestApp::new(
         user_store_type,
         banned_token_store_type,
         standard_2fa_code_store_type,
         stdout_email_client_type,
+        Some("should_return_400_if_malformed_input_entity".to_string())
     )
     .await;
 
@@ -157,4 +161,7 @@ async fn should_return_400_if_malformed_input_entity() {
             test_case
         );
     }
+
+    app.clean_up().await;
+
 }
