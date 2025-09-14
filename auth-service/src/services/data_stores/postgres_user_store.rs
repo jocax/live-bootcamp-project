@@ -60,7 +60,7 @@ impl UserStore for PostgresUserStore {
         .await?;
 
         let email = Email::try_from(row.email).unwrap();
-        let password = Password::try_from(row.password_hash).unwrap();
+        let password = Password::from_hash(row.password_hash);
         let requires_2fa = row.requires_2fa;
 
         Ok(User::new(email, password, requires_2fa))

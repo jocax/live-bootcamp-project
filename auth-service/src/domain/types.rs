@@ -94,6 +94,9 @@ impl Password {
     pub fn as_str(&self) -> &str {
         &self.value
     }
+    pub fn from_hash(hash: String) -> Self {
+        Password { value: hash }
+    }
 }
 impl AsRef<str> for Password {
     fn as_ref(&self) -> &str {
